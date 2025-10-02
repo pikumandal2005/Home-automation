@@ -109,11 +109,11 @@
             </button>
         </div>
         
-        <!-- Activity Log -->
+        <!-- Voice Assistant Display -->
         <div class="bg-gray-50 dark:bg-[#2a2a2a] rounded-xl p-6">
-            <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4 text-center">Activity Log</h2>
-            <div id="log-container" class="h-40 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-xs rounded-md p-3 overflow-y-auto space-y-1">
-                <!-- Log messages will be dynamically appended here -->
+            <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4 text-center">Voice Assistant Reply</h2>
+            <div id="assistant-reply" class="h-12 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-base rounded-md p-3 flex items-center justify-center">
+                <!-- Reply messages will be shown here -->
             </div>
         </div>
 
@@ -137,7 +137,30 @@
         const lightToggleEl = document.getElementById('light-toggle');
         const lightStatusEl = document.getElementById('light-status');
         const bulbIconEl = document.getElementById('bulb-icon');
-        const logContainerEl = document.getElementById('log-container');
+        const assistantReplyEl = document.getElementById('assistant-reply');
+
+        // --- Speak and Display Function ---
+        function speakAndDisplay(text) {
+            // Show reply in display
+            if (assistantReplyEl) {
+                assistantReplyEl.textContent = text;
+            }
+            // Speak reply
+            if ('speechSynthesis' in window) {
+                try {
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.lang = 'en-US';
+                    utter.onerror = function(event) {
+                        voiceStatus.textContent = 'Speech synthesis error: ' + event.error;
+                    };
+                    window.speechSynthesis.speak(utter);
+                } catch (e) {
+                    voiceStatus.textContent = 'Speech synthesis failed: ' + e.message;
+                }
+            } else {
+                voiceStatus.textContent = 'Speech synthesis not supported in this browser.';
+            }
+        }
         const setTimerBtn = document.getElementById('set-timer-btn');
         const onTimeInput = document.getElementById('on-time');
         const offTimeInput = document.getElementById('off-time');
@@ -197,15 +220,26 @@
             };
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript.trim().toLowerCase();
-                addLog('Voice command: ' + transcript);
                 if (transcript.includes('turn on')) {
                     publishMessage(light_set_topic, 'ON');
                     voiceStatus.textContent = 'Turning ON the light.';
+                    speakAndDisplay('Turning on the light.');
                 } else if (transcript.includes('turn off')) {
                     publishMessage(light_set_topic, 'OFF');
                     voiceStatus.textContent = 'Turning OFF the light.';
+                    speakAndDisplay('Turning off the light.');
+                } else if (transcript.includes('status') || transcript.includes('what is the light status')) {
+                    voiceStatus.textContent = 'Light status is: ' + currentLightStatus;
+                    if (currentLightStatus === 'ON') {
+                        speakAndDisplay('The light is currently on.');
+                    } else if (currentLightStatus === 'OFF') {
+                        speakAndDisplay('The light is currently off.');
+                    } else {
+                        speakAndDisplay('The light status is unknown.');
+                    }
                 } else {
                     voiceStatus.textContent = 'Unrecognized command.';
+                    speakAndDisplay('Sorry, I did not understand.');
                 }
             };
         } else {
@@ -284,10 +318,12 @@
                 lightToggleEl.checked = true;
                 lightStatusEl.textContent = "Status: ON";
                 bulbIconEl.classList.add('bulb-on');
+                speakAndDisplay('Light is turned on.');
             } else { // OFF
                 lightToggleEl.checked = false;
                 lightStatusEl.textContent = "Status: OFF";
                 bulbIconEl.classList.remove('bulb-on');
+                speakAndDisplay('Light is turned off.');
             }
         }
 

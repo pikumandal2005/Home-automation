@@ -54,9 +54,17 @@
 
     <div class="w-full max-w-md mx-auto bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-lg dark:shadow-2xl dark:shadow-black/30 p-8 space-y-6">
         
+
         <div class="text-center">
             <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Living Room Light</h1>
             <p id="connection-status" class="text-sm text-red-500 font-medium mt-2">Connecting to MQTT Broker...</p>
+        </div>
+
+        <!-- Voice Control Section -->
+        <div class="bg-gray-50 dark:bg-[#2a2a2a] rounded-xl p-6 mb-4 text-center">
+            <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2">Voice Control</h2>
+            <button id="voice-btn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200">Start Listening</button>
+            <p id="voice-status" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Say "turn on" or "turn off"</p>
         </div>
 
         <!-- Light Control Card -->
@@ -101,11 +109,11 @@
             </button>
         </div>
         
-        <!-- Activity Log -->
+        <!-- Voice Assistant Display -->
         <div class="bg-gray-50 dark:bg-[#2a2a2a] rounded-xl p-6">
-            <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4 text-center">Activity Log</h2>
-            <div id="log-container" class="h-40 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-xs rounded-md p-3 overflow-y-auto space-y-1">
-                <!-- Log messages will be dynamically appended here -->
+            <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4 text-center">Voice Assistant Reply</h2>
+            <div id="assistant-reply" class="h-12 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-base rounded-md p-3 flex items-center justify-center">
+                <!-- Reply messages will be shown here -->
             </div>
         </div>
 
@@ -113,8 +121,8 @@
 
     <script>
         // --- MQTT Configuration (Matches the final ESP8266 code) ---
-        const brokerHost = "test.mosquitto.org";
-        const brokerPort = 8081; // Secure WebSocket Port
+    const brokerHost = "test.mosquitto.org";
+    const brokerPort = 8081; // Secure WebSocket Port for Mosquitto
         const clientId = "WebAppClient_" + new Date().getTime();
 
         // MQTT Topics
@@ -129,13 +137,126 @@
         const lightToggleEl = document.getElementById('light-toggle');
         const lightStatusEl = document.getElementById('light-status');
         const bulbIconEl = document.getElementById('bulb-icon');
-        const logContainerEl = document.getElementById('log-container');
+        const assistantReplyEl = document.getElementById('assistant-reply');
+
+        // --- Speak and Display Function ---
+        function speakAndDisplay(text) {
+            // Show reply in display
+            if (assistantReplyEl) {
+                assistantReplyEl.textContent = text;
+            }
+            // Speak reply
+            if ('speechSynthesis' in window) {
+                try {
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.lang = 'en-US';
+                    utter.onerror = function(event) {
+                        voiceStatus.textContent = 'Speech synthesis error: ' + event.error;
+                    };
+                    window.speechSynthesis.speak(utter);
+                } catch (e) {
+                    voiceStatus.textContent = 'Speech synthesis failed: ' + e.message;
+                }
+            } else {
+                voiceStatus.textContent = 'Speech synthesis not supported in this browser.';
+            }
+        }
         const setTimerBtn = document.getElementById('set-timer-btn');
         const onTimeInput = document.getElementById('on-time');
         const offTimeInput = document.getElementById('off-time');
         const activeTimerDisplay = document.getElementById('active-timer-display');
         const activeTimerText = document.getElementById('active-timer-text');
+
         const clearTimerBtn = document.getElementById('clear-timer-btn');
+
+        // --- Voice Control Elements ---
+        const voiceBtn = document.getElementById('voice-btn');
+        const voiceStatus = document.getElementById('voice-status');
+        
+            // --- Speech Synthesis Setup ---
+            function speak(text) {
+                if ('speechSynthesis' in window) {
+                    try {
+                        const utter = new SpeechSynthesisUtterance(text);
+                        utter.lang = 'en-US';
+                        utter.onerror = function(event) {
+                            voiceStatus.textContent = 'Speech synthesis error: ' + event.error;
+                        };
+                        window.speechSynthesis.speak(utter);
+                    } catch (e) {
+                        voiceStatus.textContent = 'Speech synthesis failed: ' + e.message;
+                    }
+                } else {
+                    voiceStatus.textContent = 'Speech synthesis not supported in this browser.';
+                }
+            }
+        
+            // --- Track Light Status for Voice Feedback ---
+            let currentLightStatus = 'Unknown';
+
+        // --- Voice Recognition Setup ---
+        let recognition;
+        let isListening = false;
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                isListening = true;
+                voiceStatus.textContent = 'Listening...';
+                voiceBtn.textContent = 'Stop Listening';
+            };
+            recognition.onend = () => {
+                isListening = false;
+                voiceStatus.textContent = 'Say "turn on" or "turn off"';
+                voiceBtn.textContent = 'Start Listening';
+            };
+            recognition.onerror = (event) => {
+                addLog('Voice error: ' + event.error);
+                voiceStatus.textContent = 'Error: ' + event.error;
+            };
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript.trim().toLowerCase();
+                if (transcript.includes('turn on')) {
+                    publishMessage(light_set_topic, 'ON');
+                    voiceStatus.textContent = 'Turning ON the light.';
+                    speakAndDisplay('Turning on the light.');
+                } else if (transcript.includes('turn off')) {
+                    publishMessage(light_set_topic, 'OFF');
+                    voiceStatus.textContent = 'Turning OFF the light.';
+                    speakAndDisplay('Turning off the light.');
+                } else if (transcript.includes('status') || transcript.includes('what is the light status')) {
+                    voiceStatus.textContent = 'Light status is: ' + currentLightStatus;
+                    if (currentLightStatus === 'ON') {
+                        speakAndDisplay('The light is currently on.');
+                    } else if (currentLightStatus === 'OFF') {
+                        speakAndDisplay('The light is currently off.');
+                    } else {
+                        speakAndDisplay('The light status is unknown.');
+                    }
+                } else {
+                    voiceStatus.textContent = 'Unrecognized command.';
+                    speakAndDisplay('Sorry, I did not understand.');
+                }
+            };
+        } else {
+            voiceBtn && (voiceBtn.disabled = true);
+            voiceStatus && (voiceStatus.textContent = 'Voice control not supported in this browser.');
+        }
+
+        // --- Voice Button Event Listener ---
+        if (voiceBtn && recognition) {
+            voiceBtn.addEventListener('click', () => {
+                if (!isListening) {
+                    recognition.start();
+                } else {
+                    recognition.stop();
+                }
+            });
+        }
 
         // --- MQTT Client Setup ---
         const client = new Paho.Client(brokerHost, brokerPort, clientId);
@@ -192,14 +313,17 @@
 
         // --- UI Logic ---
         function updateLightStatus(status) {
+            currentLightStatus = status;
             if (status === "ON") {
                 lightToggleEl.checked = true;
                 lightStatusEl.textContent = "Status: ON";
                 bulbIconEl.classList.add('bulb-on');
+                speakAndDisplay('Light is turned on.');
             } else { // OFF
                 lightToggleEl.checked = false;
                 lightStatusEl.textContent = "Status: OFF";
                 bulbIconEl.classList.remove('bulb-on');
+                speakAndDisplay('Light is turned off.');
             }
         }
 

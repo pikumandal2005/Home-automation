@@ -153,9 +153,18 @@
             // --- Speech Synthesis Setup ---
             function speak(text) {
                 if ('speechSynthesis' in window) {
-                    const utter = new SpeechSynthesisUtterance(text);
-                    utter.lang = 'en-US';
-                    window.speechSynthesis.speak(utter);
+                    try {
+                        const utter = new SpeechSynthesisUtterance(text);
+                        utter.lang = 'en-US';
+                        utter.onerror = function(event) {
+                            voiceStatus.textContent = 'Speech synthesis error: ' + event.error;
+                        };
+                        window.speechSynthesis.speak(utter);
+                    } catch (e) {
+                        voiceStatus.textContent = 'Speech synthesis failed: ' + e.message;
+                    }
+                } else {
+                    voiceStatus.textContent = 'Speech synthesis not supported in this browser.';
                 }
             }
         

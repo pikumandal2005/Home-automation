@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<!-- The theme will be set automatically by the script in the head -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Automation Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
+    <script>
+        // This script checks the user's system preference and applies the dark/light theme on load to prevent flashing.
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Custom styles for the animated toggle switch */
+        .toggle-checkbox:checked {
+            transform: translateX(100%);
+            border-color: #4f46e5; /* indigo-600 */
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #4f46e5;
+        }
+
+        /* Glowing effect for the bulb icon when it's on */
+        .dark .bulb-on {
+            color: #facc15; /* yellow-400 */
+            filter: drop-shadow(0 0 8px #facc15) drop-shadow(0 0 16px #fde047);
+        }
+        .bulb-on {
+             color: #f59e0b; /* amber-500 */
+        }
+
+        /* Custom styling to make the time input look good in dark mode */
+        .dark input[type="time"] {
+            background-color: #374151; /* gray-700 */
+            color: #f3f4f6; /* gray-100 */
+            border-color: #4b5563; /* gray-600 */
+        }
+        .dark input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-[#121212] flex items-center justify-center min-h-screen p-4 transition-colors duration-300">
+
+    <div class="w-full max-w-md mx-auto bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-lg dark:shadow-2xl dark:shadow-black/30 p-8 space-y-6">
+        
+
+        <div class="text-center">
+            <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-100">Living Room Light</h1>
+            <p id="connection-status" class="text-sm text-red-500 font-medium mt-2">Connecting to MQTT Broker...</p>
+        </div>
+
+        <!-- Voice Control Section -->
+        <div class="bg-gray-50 dark:bg-[#2a2a2a] rounded-xl p-6 mb-4 text-center">
+            <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-2">Voice Control</h2>
+            <button id="voice-btn" class="bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200">Start Listening</button>
+            <p id="voice-status" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Say "turn on" or "turn off"</p>
+        </div>
+
+        <!-- Light Control Card -->
+        <div class="bg-gray-50 dark:bg-[#2a2a2a] rounded-xl p-6 text-center transition-all duration-300">
+            <div class="mb-4">
+                <svg id="bulb-icon" class="w-20 h-20 mx-auto text-gray-300 dark:text-gray-600 transition-all duration-500" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M10 2a1 1 0 011 1v1a7 7 0 014.243 12.757A1 1 0 0114 18H6a1 1 0 01-.243-1.975A7 7 0 0110 4V3a1 1 0 01-1-1zM10 16a3 3 0 100-6 3 3 0 000 6z" /><path d="M9 20a1 1 0 011-1h0a1 1 0 011 1v1a1 1 0 01-2 0v-1z" /></svg>
+            </div>
+            
+            <div class="relative inline-block w-16 h-8 align-middle select-none">
+                <input type="checkbox" id="light-toggle" class="toggle-checkbox absolute block w-8 h-8 rounded-full bg-white border-2 border-gray-300 appearance-none cursor-pointer transition-transform duration-300 ease-in-out"/>
+                <label for="light-toggle" class="toggle-label block overflow-hidden h-8 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer transition-colors duration-300 ease-in-out"></label>
+            </div>
+            
+            <p id="light-status" class="text-sm text-gray-500 dark:text-gray-400 font-medium mt-4">Status: Unknown</p>
+        </div>
+
+        <!-- Automatic Task Timer -->
+        <div class="bg-gray-50 dark:bg-[#2a2a2a] rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4 text-center">Automatic Task Timer</h2>
+            
+            <!-- Active Timer Display -->
+            <div id="active-timer-display" class="hidden bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 p-3 rounded-lg mb-4 flex justify-between items-center">
+                <div>
+                    <p class="font-semibold">Active Timer</p>
+                    <p id="active-timer-text" class="text-sm"></p>
+                </div>
+                <button id="clear-timer-btn" class="text-sm font-semibold text-red-600 dark:text-red-400 hover:underline">Clear</button>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label for="on-time" class="block text-sm font-medium text-gray-600 dark:text-gray-400">Turn ON Time</label>
+                    <input type="time" id="on-time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                </div>
+                <div>
+                    <label for="off-time" class="block text-sm font-medium text-gray-600 dark:text-gray-400">Turn OFF Time</label>
+                    <input type="time" id="off-time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white">
+                </div>
+            </div>
+            <button id="set-timer-btn" class="mt-4 w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 dark:focus:ring-offset-gray-800 focus:ring-indigo-500 transition-all duration-200">
+                Set Automatic Task
+            </button>
+        </div>
+        
+        <!-- Activity Log -->
+        <div class="bg-gray-50 dark:bg-[#2a2a2a] rounded-xl p-6">
+            <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4 text-center">Activity Log</h2>
+            <div id="log-container" class="h-40 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-xs rounded-md p-3 overflow-y-auto space-y-1">
+                <!-- Log messages will be dynamically appended here -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- MQTT Configuration (Matches the final ESP8266 code) ---
+        const brokerHost = "test.mosquitto.org";
+        const brokerPort = 8081; // Secure WebSocket Port
+        const clientId = "WebAppClient_" + new Date().getTime();
+
+        // MQTT Topics
+        const light_set_topic = "homeautomation/project/light/set";
+        const light_status_topic = "homeautomation/project/light/status";
+        const light_log_topic = "homeautomation/project/light/log";
+        const light_timer_set_topic = "homeautomation/project/light/setTimer";
+        const light_timer_clear_topic = "homeautomation/project/light/clearTimer";
+
+        // --- UI Elements ---
+        const connectionStatusEl = document.getElementById('connection-status');
+        const lightToggleEl = document.getElementById('light-toggle');
+        const lightStatusEl = document.getElementById('light-status');
+        const bulbIconEl = document.getElementById('bulb-icon');
+        const logContainerEl = document.getElementById('log-container');
+        const setTimerBtn = document.getElementById('set-timer-btn');
+        const onTimeInput = document.getElementById('on-time');
+        const offTimeInput = document.getElementById('off-time');
+        const activeTimerDisplay = document.getElementById('active-timer-display');
+        const activeTimerText = document.getElementById('active-timer-text');
+
+        const clearTimerBtn = document.getElementById('clear-timer-btn');
+
+        // --- Voice Control Elements ---
+        const voiceBtn = document.getElementById('voice-btn');
+        const voiceStatus = document.getElementById('voice-status');
+
+        // --- Voice Recognition Setup ---
+        let recognition;
+        let isListening = false;
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+
+            recognition.onstart = () => {
+                isListening = true;
+                voiceStatus.textContent = 'Listening...';
+                voiceBtn.textContent = 'Stop Listening';
+            };
+            recognition.onend = () => {
+                isListening = false;
+                voiceStatus.textContent = 'Say "turn on" or "turn off"';
+                voiceBtn.textContent = 'Start Listening';
+            };
+            recognition.onerror = (event) => {
+                addLog('Voice error: ' + event.error);
+                voiceStatus.textContent = 'Error: ' + event.error;
+            };
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript.trim().toLowerCase();
+                addLog('Voice command: ' + transcript);
+                if (transcript.includes('turn on')) {
+                    publishMessage(light_set_topic, 'ON');
+                    voiceStatus.textContent = 'Turning ON the light.';
+                } else if (transcript.includes('turn off')) {
+                    publishMessage(light_set_topic, 'OFF');
+                    voiceStatus.textContent = 'Turning OFF the light.';
+                } else {
+                    voiceStatus.textContent = 'Unrecognized command.';
+                }
+            };
+        } else {
+            voiceBtn && (voiceBtn.disabled = true);
+            voiceStatus && (voiceStatus.textContent = 'Voice control not supported in this browser.');
+        }
+
+        // --- Voice Button Event Listener ---
+        if (voiceBtn && recognition) {
+            voiceBtn.addEventListener('click', () => {
+                if (!isListening) {
+                    recognition.start();
+                } else {
+                    recognition.stop();
+                }
+            });
+        }
+
+        // --- MQTT Client Setup ---
+        const client = new Paho.Client(brokerHost, brokerPort, clientId);
+        client.onConnectionLost = onConnectionLost;
+        client.onMessageArrived = onMessageArrived;
+        const options = {
+            timeout: 3,
+            useSSL: true, // Required for wss://
+            onSuccess: onConnect,
+            onFailure: onFailure,
+        };
+        client.connect(options);
+
+        // --- MQTT Functions ---
+        function onConnect() {
+            connectionStatusEl.textContent = "Connected to MQTT Broker";
+            connectionStatusEl.classList.replace('text-red-500', 'text-green-500');
+            client.subscribe(light_status_topic);
+            client.subscribe(light_log_topic);
+            addLog("Web UI connected and listening for updates.");
+        }
+
+        function onFailure(message) {
+            console.error("Connection failed: " + message.errorMessage);
+            connectionStatusEl.textContent = "Connection Failed. Please check network and refresh.";
+        }
+
+        function onConnectionLost(responseObject) {
+            if (responseObject.errorCode !== 0) {
+                connectionStatusEl.textContent = "Connection Lost. Please refresh.";
+                connectionStatusEl.classList.replace('text-green-500', 'text-red-500');
+            }
+        }
+
+        function onMessageArrived(message) {
+            const topic = message.destinationName;
+            const payload = message.payloadString;
+            if (topic === light_status_topic) {
+                updateLightStatus(payload);
+            } else if (topic === light_log_topic) {
+                addLog(payload);
+            }
+        }
+
+        function publishMessage(topic, payload) {
+            if (!client.isConnected()) {
+                addLog("Cannot publish. Not connected to broker.");
+                return;
+            }
+            const message = new Paho.Message(payload);
+            message.destinationName = topic;
+            client.send(message);
+        }
+
+        // --- UI Logic ---
+        function updateLightStatus(status) {
+            if (status === "ON") {
+                lightToggleEl.checked = true;
+                lightStatusEl.textContent = "Status: ON";
+                bulbIconEl.classList.add('bulb-on');
+            } else { // OFF
+                lightToggleEl.checked = false;
+                lightStatusEl.textContent = "Status: OFF";
+                bulbIconEl.classList.remove('bulb-on');
+            }
+        }
+
+        function addLog(logText) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            // Sanitize text to prevent HTML injection
+            const sanitizedText = logText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            logEntry.innerHTML = `<span class="text-cyan-600 dark:text-cyan-400">[${timestamp}]</span> > ${sanitizedText}`;
+            logContainerEl.appendChild(logEntry);
+            logContainerEl.scrollTop = logContainerEl.scrollHeight; // Auto-scroll to the bottom
+        }
+
+        function displayActiveTimer(onTime, offTime) {
+             const formatTime = (time) => new Date('1970-01-01T' + time).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true});
+             activeTimerText.textContent = `ON: ${formatTime(onTime)} - OFF: ${formatTime(offTime)}`;
+             activeTimerDisplay.classList.remove('hidden');
+        }
+
+        function hideActiveTimer() {
+            activeTimerDisplay.classList.add('hidden');
+        }
+        
+        // --- Event Listeners ---
+        lightToggleEl.addEventListener('change', () => {
+            const state = lightToggleEl.checked ? "ON" : "OFF";
+            publishMessage(light_set_topic, state);
+        });
+        
+        setTimerBtn.addEventListener('click', () => {
+            const onTime = onTimeInput.value;
+            const offTime = offTimeInput.value;
+            const originalText = setTimerBtn.textContent;
+
+            if (!onTime || !offTime) {
+                setTimerBtn.textContent = "Please select both times!";
+                setTimerBtn.classList.replace('bg-indigo-600', 'bg-red-600');
+                setTimerBtn.classList.replace('hover:bg-indigo-700', 'hover:bg-red-700');
+                setTimeout(() => {
+                    setTimerBtn.textContent = originalText;
+                    setTimerBtn.classList.replace('bg-red-600', 'bg-indigo-600');
+                    setTimerBtn.classList.replace('hover:bg-red-700', 'hover:bg-indigo-700');
+                }, 3000);
+                return;
+            }
+
+            const timerPayload = JSON.stringify({ on: onTime, off: offTime });
+            publishMessage(light_timer_set_topic, timerPayload);
+            addLog(`Setting timer: ON at ${onTime}, OFF at ${offTime}.`);
+
+            localStorage.setItem('lightTimer', timerPayload);
+            displayActiveTimer(onTime, offTime);
+
+            setTimerBtn.textContent = "Timer Set Successfully!";
+            setTimerBtn.disabled = true;
+            setTimerBtn.classList.replace('bg-indigo-600', 'bg-green-600');
+            setTimerBtn.classList.replace('hover:bg-indigo-700', 'hover:bg-green-700');
+            setTimeout(() => {
+                setTimerBtn.textContent = originalText;
+                setTimerBtn.disabled = false;
+                setTimerBtn.classList.replace('bg-green-600', 'bg-indigo-600');
+                setTimerBtn.classList.replace('hover:bg-green-700', 'hover:bg-indigo-700');
+            }, 3000);
+        });
+
+        clearTimerBtn.addEventListener('click', () => {
+            publishMessage(light_timer_clear_topic, "CLEAR");
+            localStorage.removeItem('lightTimer');
+            hideActiveTimer();
+            addLog("Active timer has been cleared.");
+        });
+
+        // On page load, check for a stored timer to display it
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedTimer = localStorage.getItem('lightTimer');
+            if(savedTimer) {
+                const { on, off } = JSON.parse(savedTimer);
+                displayActiveTimer(on, off);
+            }
+        });
+
+    </script>
+
+</body>
+</html>

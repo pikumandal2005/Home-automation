@@ -149,6 +149,18 @@
         // --- Voice Control Elements ---
         const voiceBtn = document.getElementById('voice-btn');
         const voiceStatus = document.getElementById('voice-status');
+        
+            // --- Speech Synthesis Setup ---
+            function speak(text) {
+                if ('speechSynthesis' in window) {
+                    const utter = new SpeechSynthesisUtterance(text);
+                    utter.lang = 'en-US';
+                    window.speechSynthesis.speak(utter);
+                }
+            }
+        
+            // --- Track Light Status for Voice Feedback ---
+            let currentLightStatus = 'Unknown';
 
         // --- Voice Recognition Setup ---
         let recognition;
@@ -258,6 +270,7 @@
 
         // --- UI Logic ---
         function updateLightStatus(status) {
+            currentLightStatus = status;
             if (status === "ON") {
                 lightToggleEl.checked = true;
                 lightStatusEl.textContent = "Status: ON";

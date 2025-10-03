@@ -8,6 +8,35 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
     <script>
+        // Dashboard Overview Logic
+        const dashboardTotalLights = document.getElementById('dashboard-total-lights');
+        const dashboardOnCount = document.getElementById('dashboard-on-count');
+        const dashboardOffCount = document.getElementById('dashboard-off-count');
+        const dashboardTimerStatus = document.getElementById('dashboard-timer-status');
+
+        function updateDashboardOverview() {
+            let onCount = 0, offCount = 0;
+            for (let i = 1; i <= NUM_LIGHTS; i++) {
+                const toggle = document.getElementById(`light-toggle-${i}`);
+                if (toggle && toggle.checked) onCount++;
+                else offCount++;
+            }
+            dashboardTotalLights.textContent = NUM_LIGHTS;
+            dashboardOnCount.textContent = onCount;
+            dashboardOffCount.textContent = offCount;
+        }
+
+        function updateDashboardTimerStatus(onTime, offTime) {
+            if (onTime && offTime) {
+                dashboardTimerStatus.textContent = `Timer: ON ${onTime}, OFF ${offTime}`;
+                dashboardTimerStatus.classList.remove('bg-indigo-200', 'dark:bg-indigo-700');
+                dashboardTimerStatus.classList.add('bg-green-200', 'dark:bg-green-700');
+            } else {
+                dashboardTimerStatus.textContent = 'No Timer';
+                dashboardTimerStatus.classList.remove('bg-green-200', 'dark:bg-green-700');
+                dashboardTimerStatus.classList.add('bg-indigo-200', 'dark:bg-indigo-700');
+            }
+        }
         // This script checks the user's system preference and applies the dark/light theme on load to prevent flashing.
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
           document.documentElement.classList.add('dark')
@@ -16,41 +45,118 @@
         }
     </script>
     <style>
+        heme toggle button styling */
+        .theme-btn.active {
+            background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%);
+            color: #fff !important;
+        }
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc; /* light mode bg */
+            background-color: #f4f6fb;
+            color: #22223b;
         }
         .dark body {
-             background-color: #0f172a; /* dark mode bg */
+            background-color: #101624;
+            color: #e0e7ef;
         }
-        
-        /* Custom styles for the animated toggle switch */
+
+        /* Card styling */
+        .card {
+            background: linear-gradient(135deg, #ffffff 80%, #e0e7ef 100%);
+            border-radius: 1.25rem;
+            box-shadow: 0 6px 32px 0 rgba(60,72,88,0.10);
+            border: 1px solid #e5e7eb;
+            transition: box-shadow 0.2s;
+        }
+        .card:hover {
+            box-shadow: 0 12px 40px 0 rgba(60,72,88,0.18);
+        }
+        .dark .card {
+            background: linear-gradient(135deg, #1e293b 80%, #334155 100%);
+            border: 1px solid #334155;
+        }
+
+        /* Button styling */
+        .btn {
+            background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%);
+            color: #fff;
+            border-radius: 0.75rem;
+            padding: 0.5rem 1.25rem;
+            font-weight: 600;
+            box-shadow: 0 2px 8px 0 rgba(79,70,229,0.10);
+            border: none;
+            transition: background 0.2s, box-shadow 0.2s;
+        }
+        .btn:hover, .btn:focus {
+            background: linear-gradient(90deg, #4f46e5 0%, #6366f1 100%);
+            box-shadow: 0 4px 16px 0 rgba(79,70,229,0.18);
+        }
+        .dark .btn {
+            background: linear-gradient(90deg, #6366f1 0%, #818cf8 100%);
+            color: #f3f4f6;
+        }
+
+        /* Input styling */
+        input[type="time"], input[type="text"], input[type="email"], textarea {
+            background: #f8fafc;
+            border-radius: 0.5rem;
+            border: 1px solid #cbd5e1;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+        input[type="time"]:focus, input[type="text"]:focus, input[type="email"]:focus, textarea:focus {
+            border-color: #4f46e5;
+            outline: none;
+        }
+        .dark input[type="time"], .dark input[type="text"], .dark input[type="email"], .dark textarea {
+            background-color: #23293a;
+            color: #e0e7ef;
+            border-color: #334155;
+        }
+        .dark input[type="time"]::-webkit-calendar-picker-indicator {
+            filter: invert(1);
+        }
+
+        /* Toggle switch styling */
+        .toggle-checkbox {
+            appearance: none;
+            width: 2.5rem;
+            height: 1.25rem;
+            background: #e5e7eb;
+            border-radius: 1rem;
+            position: relative;
+            outline: none;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
         .toggle-checkbox:checked {
-            transform: translateX(100%);
-            border-color: #4f46e5; /* indigo-600 */
+            background: #4f46e5;
         }
-        .toggle-checkbox:checked + .toggle-label {
-            background-color: #4f46e5;
+        .toggle-checkbox:before {
+            content: '';
+            position: absolute;
+            left: 0.15rem;
+            top: 0.15rem;
+            width: 1rem;
+            height: 1rem;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+        .toggle-checkbox:checked:before {
+            transform: translateX(1.25rem);
         }
 
         /* Glowing effect for the bulb icon when it's on */
         .dark .bulb-on {
-            color: #facc15; /* yellow-400 */
+            color: #facc15;
             filter: drop-shadow(0 0 8px #facc15) drop-shadow(0 0 16px #fde047);
         }
         .bulb-on {
-             color: #f59e0b; /* amber-500 */
-        }
-
-        /* Custom styling for inputs */
-        .dark input[type="time"], .dark input[type="text"], .dark input[type="email"], .dark textarea {
-            background-color: #374151;
-            color: #f3f4f6;
-            border-color: #4b5563;
-        }
-        .dark input[type="time"]::-webkit-calendar-picker-indicator {
-            filter: invert(1);
+            color: #f59e0b;
+            filter: drop-shadow(0 0 4px #f59e0b);
         }
 
         /* Drawer styles */
@@ -66,29 +172,109 @@
         .drawer-open {
             transform: translateX(0);
         }
+
+        /* Misc improvements */
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #4f46e5;
+        }
+        .dark .section-title {
+            color: #818cf8;
+        }
+        .activity-log {
+            font-size: 0.95rem;
+            color: #64748b;
+        }
+        .dark .activity-log {
+            color: #cbd5e1;
+        }
+        .shadow-inner {
+            box-shadow: 0 2px 8px 0 rgba(60,72,88,0.08);
+        }
+        .dark .shadow-inner {
+            box-shadow: 0 2px 8px 0 rgba(30,41,59,0.18);
+        }
+        @media (max-width: 640px) {
+            .card {
+                padding: 1rem;
+                border-radius: 1rem;
+            }
+            #drawer {
+                width: 90vw;
+                min-width: 0;
+            }
+        }
     </style>
 </head>
 <body class="dark:bg-slate-900 bg-slate-50 transition-colors duration-300">
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-2 items-end pointer-events-none"></div>
 
+    <!-- Theme Toggle Switch -->
+    <div class="fixed top-2 right-2 z-50">
+        <div class="flex items-center gap-1 bg-white dark:bg-slate-700 rounded-full shadow-lg px-2 py-1 border border-gray-200 dark:border-slate-600">
+            <button id="theme-light" title="Light" class="theme-btn w-7 h-7 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M12 1v2m0 18v2m11-11h-2M3 12H1m16.95 6.95l-1.41-1.41M6.46 6.46L5.05 5.05m12.02 0l-1.41 1.41M6.46 17.54l-1.41 1.41"/></svg>
+            </button>
+            <button id="theme-dark" title="Dark" class="theme-btn w-7 h-7 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke="currentColor" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/></svg>
+            </button>
+            <button id="theme-system" title="System" class="theme-btn w-7 h-7 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M8 8h8v8H8z"/></svg>
+            </button>
+        </div>
+    </div>
     <!-- Drawer Backdrop -->
     <div id="drawer-backdrop" class="fixed inset-0 z-40 drawer-backdrop hidden"></div>
     
     <!-- Drawer Menu -->
-    <aside id="drawer" class="fixed top-0 left-0 h-full w-80 bg-white dark:bg-slate-800 shadow-2xl z-50 drawer drawer-closed flex flex-col">
-        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <span class="text-lg font-bold text-indigo-700 dark:text-indigo-300">Menu</span>
-            <button id="drawer-close" class="text-gray-500 hover:text-indigo-600 text-2xl">&times;</button>
-        </div>
-        <div class="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-            <!-- About Section -->
-            <section class="pb-4 border-b dark:border-gray-700">
-                <h3 class="font-semibold text-gray-700 dark:text-gray-200 mb-2">About</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">
-                    <b>Smart Home Automation</b><br>
-                    <span class="block mt-1">Developed by: <span class="font-medium">Arnab Mandal</span> & <span class="font-medium">Piku Mandal</span></span>
-                    <span class="block mt-1">Contact: <a href="mailto:arnabmandal123123@gmail.com" class="text-indigo-600 dark:text-indigo-400 underline">arnabmandal123123@gmail.com</a></span>
-                </p>
-            </section>
+    <aside id="drawer" class="fixed top-0 left-0 h-full w-72 sm:w-80 bg-white dark:bg-slate-800 shadow-2xl z-50 drawer drawer-closed flex flex-col transition-all duration-300">
+                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                        <span class="text-base font-bold text-indigo-700 dark:text-indigo-300">Menu</span>
+                        <button id="drawer-close" class="text-gray-500 hover:text-indigo-600 text-xl">&times;</button>
+                </div>
+                <div class="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+                                    <!-- Compact & Responsive About Section -->
+                                    <section class="about-card bg-white dark:bg-slate-800 rounded-lg shadow p-3 mb-2 border-b dark:border-gray-700">
+                                        <div class="mb-2">
+                                            <span class="block text-xs font-semibold text-gray-500 dark:text-gray-400">Founder & CEO</span>
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <img src="Piku-Image.jpg" alt="Piku Mandal Profile" class="w-12 h-12 rounded-full border-2 border-indigo-500">
+                                            <div>
+                                                <h3 class="text-base font-bold text-indigo-700 dark:text-indigo-300">Piku Mandal</h3>
+                                                <p class="text-xs text-gray-600 dark:text-gray-400">B.Tech, Electrical Engineering</p>
+                                                <div class="flex gap-2 mt-1 items-center flex-wrap">
+                                                    <span class="flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
+                                                        <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Gmail_Icon.png" alt="Gmail" class="w-4 h-4">
+                                                        <span class="font-mono select-all text-xs">pikumandal5233@gmail.com</span>
+                                                    </span>
+                                                    <a href="https://www.instagram.com/its_piku_mandal/" target="_blank" class="text-pink-500 underline flex items-center gap-1 text-xs">
+                                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M7.75 2h8.5A5.75 5.75 0 0122 7.75v8.5A5.75 5.75 0 0116.25 22h-8.5A5.75 5.75 0 012 16.25v-8.5A5.75 5.75 0 017.75 2zm0 1.5A4.25 4.25 0 003.5 7.75v8.5A4.25 4.25 0 007.75 20.5h8.5a4.25 4.25 0 004.25-4.25v-8.5A4.25 4.25 0 0016.25 3.5h-8.5zm4.25 3.25a5.25 5.25 0 110 10.5 5.25 5.25 0 010-10.5zm0 1.5a3.75 3.75 0 100 7.5 3.75 3.75 0 000-7.5zm5.25.75a1 1 0 110 2 1 1 0 010-2z"></path></svg>
+                                                        Instagram
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="mt-4 mb-2">
+                                            <span class="block text-xs font-semibold text-gray-500 dark:text-gray-400">Co-Founder & CTO</span>
+                                        </div>
+                                        <div class="flex items-center gap-3">
+                                            <img src="Arnab-Image.jpg" alt="Arnab Mandal Profile" class="w-12 h-12 rounded-full border-2 border-indigo-500">
+                                            <div>
+                                                <h3 class="text-base font-bold text-indigo-700 dark:text-indigo-300">Arnab Mandal</h3>
+                                                <p class="text-xs text-gray-600 dark:text-gray-400">Diploma, Electrical Engineering</p>
+                                                <span class="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 mt-1">
+                                                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Gmail_Icon.png" alt="Gmail" class="w-4 h-4">
+                                                    <span class="font-mono select-all text-xs">arnabmandal123123@gmail.com</span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <p class="mt-3 text-xs text-gray-600 dark:text-gray-400">
+                                            We build smart, secure, and user-friendly home automation solutions. Contact us for collaboration or support.
+                                        </p>
+                                    </section>
             <!-- Feedback Form -->
             <section>
                 <h3 class="font-semibold text-gray-700 dark:text-gray-200 mb-2">Feedback / Query</h3>
@@ -103,116 +289,270 @@
     </aside>
 
     <!-- Menu Drawer Button -->
-    <button id="drawer-open" class="fixed top-6 left-6 z-30 bg-white dark:bg-slate-700 rounded-full shadow-lg p-2 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
+    <button id="drawer-open" class="fixed top-4 left-4 z-30 bg-white dark:bg-slate-700 rounded-full shadow-lg p-2 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition sm:top-6 sm:left-6">
         <svg class="w-6 h-6 text-indigo-700 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
     </button>
 
     <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="w-full max-w-md mx-auto bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 space-y-6">
+    <div class="w-full max-w-2xl mx-auto card p-8 space-y-8">
+
+        <!-- Dashboard Overview -->
+        <div id="dashboard-overview" class="mb-6 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 shadow-inner flex flex-col gap-2">
+            <div class="flex justify-between items-center">
+                <span class="font-bold text-lg section-title">Dashboard Overview</span>
+                <span id="dashboard-timer-status" class="text-xs px-2 py-1 rounded bg-indigo-200 dark:bg-indigo-700 text-indigo-900 dark:text-indigo-100">No Timer</span>
+            </div>
+            <div class="flex justify-between items-center mt-2">
+                <span>Total Lights: <span id="dashboard-total-lights" class="font-semibold">4</span></span>
+                <span>ON: <span id="dashboard-on-count" class="font-semibold text-green-600">0</span></span>
+                <span>OFF: <span id="dashboard-off-count" class="font-semibold text-gray-500">0</span></span>
+            </div>
+        </div>
+
+        <!-- Quick Action Buttons -->
+        <div class="flex justify-center gap-4 mb-4">
+            <button id="turn-all-on" class="btn flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                Turn All ON
+            </button>
+            <button id="turn-all-off" class="btn flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                Turn All OFF
+            </button>
+        </div>
 
             <div class="text-center">
-                <h1 id="appliance-name" class="text-3xl font-bold text-gray-800 dark:text-gray-100">Smart Light Control</h1>
+                <h1 id="appliance-name" class="text-3xl font-bold section-title mb-2">Smart Light Control</h1>
                 <p id="connection-status" class="text-sm text-red-500 font-medium mt-2">Connecting to MQTT Broker...</p>
             </div>
 
             <!-- Voice Control Section -->
             <div class="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-4 flex flex-col items-center shadow-inner">
-                 <div class="flex items-center justify-center w-full mb-2">
-                     <svg class="w-6 h-6 text-indigo-600 dark:text-indigo-300 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
-                     <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200">Voice Control</h2>
-                 </div>
-                 <button id="voice-btn" class="mb-2 flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition">
-                     <span id="voice-btn-text">Start Listening</span>
-                 </button>
-                 <div id="voice-status" class="text-xs text-gray-500 dark:text-gray-300 h-4"></div>
-                 <!-- Instructions Toggle -->
-                 <div class="w-full mt-2 border-t border-indigo-200 dark:border-indigo-700/50 pt-2">
-                     <button id="instructions-toggle" class="flex items-center justify-between w-full text-sm font-medium text-indigo-700 dark:text-indigo-300">
-                         <span class="flex items-center">
-                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                             Instructions
-                         </span>
-                         <svg id="instruction-chevron" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                     </button>
-                     <div id="voice-instructions" class="overflow-hidden max-h-0 transition-all duration-500 ease-in-out">
-                         <ul class="list-disc list-inside text-xs text-left text-gray-600 dark:text-gray-400 mt-2 pl-2 space-y-1">
-                             <li>Click "Start Listening" and wait for the prompt.</li>
-                             <li>Say a command clearly, for example:</li>
-                             <li class="ml-4"><i>"Turn on Desk Lamp"</i></li>
-                             <li class="ml-4"><i>"Turn off all lights"</i></li>
-                             <li>The system uses the custom names you set for each light.</li>
-                             <li>Voice control works best on Chrome & Edge browsers.</li>
-                         </ul>
-                     </div>
-                 </div>
+                <div class="w-full flex flex-col items-center">
+                    <div class="flex items-center justify-center w-full mb-2">
+                        <svg class="w-6 h-6 text-indigo-600 dark:text-indigo-300 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path></svg>
+                        <h2 class="text-lg font-semibold section-title">Voice Control</h2>
+                    </div>
+                    <button id="voice-btn" class="btn mb-2 flex items-center gap-2">
+                        <span id="voice-btn-text">Start Listening</span>
+                    </button>
+                    <span id="voice-status" class="text-xs text-gray-500 dark:text-gray-300 h-4"></span>
+                    <button id="instructions-toggle" class="mt-2 text-indigo-600 dark:text-indigo-400 underline flex items-center gap-1 transition-colors duration-200">
+                        <span>Instructions</span>
+                        <svg id="instruction-chevron" class="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div id="voice-instructions" class="overflow-hidden max-h-0 transition-all duration-500 ease-in-out">
+                        <ul class="list-disc list-inside text-xs text-left text-gray-600 dark:text-gray-400 mt-2 pl-2 space-y-1">
+                            <li>Click "Start Listening" and wait for the prompt.</li>
+                            <li>Say a command clearly, for example:</li>
+                            <li class="ml-4"><i>"Turn on Desk Lamp"</i></li>
+                            <li class="ml-4"><i>"Turn off all lights"</i></li>
+                            <li>The system uses the custom names you set for each light.</li>
+                            <li>Voice control works best on Chrome & Edge browsers.</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             <!-- Light Control Cards Container -->
-            <div id="light-card-container" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <!-- Light Cards will be generated by JS -->
+            <div id="light-card-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4">
+                <!-- Light Groups: Living Room, Bedroom -->
+                <div id="group-living" class="mb-4">
+                    <h3 class="font-semibold text-indigo-700 dark:text-indigo-300 mb-2">Living Room</h3>
+                    <div class="grid grid-cols-1 gap-4" id="living-room-cards"></div>
+                </div>
+                <div id="group-bedroom" class="mb-4">
+                    <h3 class="font-semibold text-indigo-700 dark:text-indigo-300 mb-2">Bedroom</h3>
+                    <div class="grid grid-cols-1 gap-4" id="bedroom-cards"></div>
+                </div>
             </div>
 
             <!-- Automatic Task Timer -->
             <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-6">
-                <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4 text-center">Automatic Timer (All Lights)</h2>
+                <h2 class="section-title mb-4 text-center">Automatic Timer (All Lights)</h2>
                 <div id="active-timer-display" class="hidden bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 p-3 rounded-lg mb-4 flex justify-between items-center">
                     <div>
                         <p class="font-semibold">Active Timer</p>
                         <p id="active-timer-text" class="text-sm"></p>
                     </div>
-                    <button id="clear-timer-btn" class="text-sm font-semibold text-red-600 dark:text-red-400 hover:underline">Clear</button>
+                    <button id="clear-timer-btn" class="btn text-sm font-semibold text-red-600 dark:text-red-400 hover:underline">Clear</button>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label for="on-time" class="block text-sm font-medium text-gray-600 dark:text-gray-400">Turn ON Time</label>
-                        <input type="time" id="on-time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <label for="on-time" class="block text-sm font-medium">Turn ON Time</label>
+                        <input type="time" id="on-time" class="input mt-1 block w-full" />
                     </div>
                     <div>
-                        <label for="off-time" class="block text-sm font-medium text-gray-600 dark:text-gray-400">Turn OFF Time</label>
-                        <input type="time" id="off-time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <label for="off-time" class="block text-sm font-medium">Turn OFF Time</label>
+                        <input type="time" id="off-time" class="input mt-1 block w-full" />
                     </div>
                 </div>
-                <button id="set-timer-btn" class="mt-4 w-full bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-100 dark:focus:ring-offset-slate-800 focus:ring-indigo-500 transition-all duration-200">
-                    Set Automatic Task
-                </button>
+                <button id="set-timer-btn" class="btn mt-4 w-full">Set Automatic Task</button>
             </div>
             
             <!-- Activity Log -->
             <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-6">
-                <h2 class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-4 text-center">Activity Log</h2>
-                <div id="log-container" class="h-40 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-xs rounded-md p-3 overflow-y-auto space-y-1">
+                <h2 class="section-title mb-4 text-center">Activity Log</h2>
+                <div class="flex items-center gap-2 mb-2">
+                    <input id="log-search" type="text" placeholder="Search log..." class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm w-2/3" />
+                    <select id="log-filter" class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm">
+                        <option value="all">All</option>
+                        <option value="on">ON</option>
+                        <option value="off">OFF</option>
+                        <option value="timer">Timer</option>
+                        <option value="voice">Voice</option>
+                        <option value="system">System</option>
+                    </select>
                 </div>
+                <div id="log-container" class="activity-log h-40 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-xs rounded-md p-3 overflow-y-auto space-y-1"></div>
+        <!-- ...existing code... -->
             </div>
 
         </div>
     </div>
 
     <script>
+        // --- Enhanced Activity Log Logic ---
+        const logEntries = [];
+        function getLogIcon(type) {
+            switch(type) {
+                case "on": return '<svg class="inline w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+                case "off": return '<svg class="inline w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+                case "timer": return '<svg class="inline w-4 h-4 text-yellow-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"></path></svg>';
+                case "voice": return '<svg class="inline w-4 h-4 text-indigo-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10v2a7 7 0 0014 0v-2"></path></svg>';
+                case "system": return '<svg class="inline w-4 h-4 text-gray-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/></svg>';
+                default: return '';
+            }
+        }
+        function renderLog() {
+            const search = document.getElementById('log-search').value.toLowerCase();
+            const filter = document.getElementById('log-filter').value;
+            const container = document.getElementById('log-container');
+            container.innerHTML = '';
+            logEntries.filter(entry => {
+                const matchesSearch = entry.text.toLowerCase().includes(search);
+                const matchesFilter = filter === 'all' || entry.type === filter;
+                return matchesSearch && matchesFilter;
+            }).forEach(entry => {
+                container.innerHTML += `<div>${getLogIcon(entry.type)}<span class="text-cyan-600 dark:text-cyan-400">[${entry.time}]</span> > ${entry.text}</div>`;
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+        function addLog(logText) {
+            const timestamp = new Date().toLocaleTimeString();
+            const sanitizedText = logText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            // Determine log type
+            let type = "system";
+            if (/Turned ON|ON/.test(logText)) type = "on";
+            else if (/Turned OFF|OFF/.test(logText)) type = "off";
+            else if (/timer|Timer|set/i.test(logText)) type = "timer";
+            else if (/Voice/i.test(logText)) type = "voice";
+            logEntries.push({ time: timestamp, text: sanitizedText, type });
+            renderLog();
+        }
         document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('log-search').addEventListener('input', renderLog);
+            document.getElementById('log-filter').addEventListener('change', renderLog);
+        });
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+            } else if (theme === 'light') {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+            } else {
+                // System
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.remove('light');
+                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    document.documentElement.classList.add('dark');
+                }
+            }
+            localStorage.theme = theme;
+            updateThemeButtons(theme);
+        }
+
+        function updateThemeButtons(theme) {
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+            if (theme === 'dark') document.getElementById('theme-dark').classList.add('active');
+            else if (theme === 'light') document.getElementById('theme-light').classList.add('active');
+            else document.getElementById('theme-system').classList.add('active');
+        }
+
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (localStorage.theme === 'system' || !localStorage.theme) {
+                applyTheme('system');
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Theme toggle logic
+            const theme = localStorage.theme || 'system';
+            applyTheme(theme);
+            document.getElementById('theme-light').onclick = () => applyTheme('light');
+            document.getElementById('theme-dark').onclick = () => applyTheme('dark');
+            document.getElementById('theme-system').onclick = () => applyTheme('system');
             const NUM_LIGHTS = 4;
             const lightCardContainer = document.getElementById('light-card-container');
+            const turnAllOnBtn = document.getElementById('turn-all-on');
+            const turnAllOffBtn = document.getElementById('turn-all-off');
+
+            // Add default welcome entry to activity log
+            if (typeof addLog === 'function') {
+                addLog("Welcome! Activity log initialized.");
+            }
+            // --- Quick Action Button Logic ---
+            turnAllOnBtn.addEventListener('click', () => {
+                for (let i = 1; i <= NUM_LIGHTS; i++) {
+                    publishMessage(`homeautomation/project/light/${i}/set`, "ON", false);
+                }
+                addLog("Turned ON all lights via quick action.");
+                showToast("All lights turned ON", "success");
+            });
+            turnAllOffBtn.addEventListener('click', () => {
+                for (let i = 1; i <= NUM_LIGHTS; i++) {
+                    publishMessage(`homeautomation/project/light/${i}/set`, "OFF", false);
+                }
+                addLog("Turned OFF all lights via quick action.");
+                showToast("All lights turned OFF", "error");
+            });
 
             // --- Dynamically Create Light Cards ---
-            for (let i = 1; i <= NUM_LIGHTS; i++) {
+            // Appliance definitions for grouping and icons
+            const appliances = [
+                { id: 1, name: 'Ceiling Light', group: 'living', icon: '<svg class="w-16 h-16 mx-auto text-yellow-400 dark:text-yellow-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a1 1 0 011 1v1a7 7 0 014.243 12.757A1 1 0 0114 18H6a1 1 0 01-.243-1.975A7 7 0 0110 4V3a1 1 0 01-1-1z"/><circle cx="12" cy="16" r="3"/></svg>' },
+                { id: 2, name: 'Table Lamp', group: 'living', icon: '<svg class="w-16 h-16 mx-auto text-amber-500 dark:text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M4 12l8-8 8 8H4z"/><rect x="10" y="16" width="4" height="4"/></svg>' },
+                { id: 3, name: 'Bedside Lamp', group: 'bedroom', icon: '<svg class="w-16 h-16 mx-auto text-indigo-400 dark:text-indigo-300" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="8" width="12" height="8" rx="2"/><rect x="10" y="16" width="4" height="4"/></svg>' },
+                { id: 4, name: 'Fan', group: 'bedroom', icon: '<svg class="w-16 h-16 mx-auto text-blue-400 dark:text-blue-300" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>' }
+            ];
+
+            appliances.forEach(appliance => {
                 const cardHTML = `
                 <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 text-center transition-all duration-300">
-                    <div id="name-container-${i}" class="flex items-center justify-center gap-2 mb-2">
-                         <h2 id="appliance-name-${i}" class="text-lg font-bold text-gray-800 dark:text-gray-100">Light ${i}</h2>
-                         <button class="edit-name-btn text-gray-400 hover:text-indigo-500" data-light-num="${i}">
+                    <div id="name-container-${appliance.id}" class="flex items-center justify-center gap-2 mb-2">
+                         <h2 id="appliance-name-${appliance.id}" class="text-lg font-bold text-gray-800 dark:text-gray-100">${appliance.name}</h2>
+                         <button class="edit-name-btn text-gray-400 hover:text-indigo-500" data-light-num="${appliance.id}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
                          </button>
                     </div>
-                    <div class="mb-4">
-                        <svg id="bulb-icon-${i}" class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 transition-all duration-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a7 7 0 014.243 12.757A1 1 0 0114 18H6a1 1 0 01-.243-1.975A7 7 0 0110 4V3a1 1 0 01-1-1zM10 16a3 3 0 100-6 3 3 0 000 6z" /><path d="M9 20a1 1 0 011-1h0a1 1 0 011 1v1a1 1 0 01-2 0v-1z" /></svg>
+                    <div class="mb-4 relative flex items-center justify-center">
+                        <span id="status-badge-${appliance.id}" class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-300">Unknown</span>
+                        <span id="icon-container-${appliance.id}">${appliance.icon}</span>
                     </div>
                     <div class="relative inline-block w-16 h-8 align-middle select-none">
-                        <input type="checkbox" id="light-toggle-${i}" data-light-num="${i}" class="toggle-checkbox absolute block w-8 h-8 rounded-full bg-white border-2 border-gray-300 appearance-none cursor-pointer transition-transform duration-300 ease-in-out"/>
-                        <label for="light-toggle-${i}" class="toggle-label block overflow-hidden h-8 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer transition-colors duration-300 ease-in-out"></label>
+                        <input type="checkbox" id="light-toggle-${appliance.id}" data-light-num="${appliance.id}" class="toggle-checkbox absolute block w-8 h-8 rounded-full bg-white border-2 border-gray-300 appearance-none cursor-pointer transition-transform duration-300 ease-in-out"/>
+                        <label for="light-toggle-${appliance.id}" class="toggle-label block overflow-hidden h-8 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer transition-colors duration-300 ease-in-out"></label>
                     </div>
-                    <p id="light-status-${i}" class="text-xs text-gray-500 dark:text-gray-400 font-medium mt-3">Status: Unknown</p>
                 </div>`;
-                lightCardContainer.insertAdjacentHTML('beforeend', cardHTML);
-            }
+                if (appliance.group === 'living') {
+                    document.getElementById('living-room-cards').insertAdjacentHTML('beforeend', cardHTML);
+                } else {
+                    document.getElementById('bedroom-cards').insertAdjacentHTML('beforeend', cardHTML);
+                }
+            });
 
             // --- MQTT Configuration ---
             const brokerHost = "test.mosquitto.org";
@@ -335,22 +675,44 @@
             // --- UI Logic ---
             function updateLightUI(lightNumber, status) {
                 const lightToggleEl = document.getElementById(`light-toggle-${lightNumber}`);
-                const lightStatusEl = document.getElementById(`light-status-${lightNumber}`);
-                const bulbIconEl = document.getElementById(`bulb-icon-${lightNumber}`);
-                if (!lightToggleEl || !lightStatusEl || !bulbIconEl) return;
+                const statusBadgeEl = document.getElementById(`status-badge-${lightNumber}`);
+                const iconContainerEl = document.getElementById(`icon-container-${lightNumber}`);
+                if (!lightToggleEl || !statusBadgeEl || !iconContainerEl) return;
                 const isON = (status === "ON");
                 lightToggleEl.checked = isON;
-                lightStatusEl.textContent = `Status: ${status}`;
-                isON ? bulbIconEl.classList.add('bulb-on') : bulbIconEl.classList.remove('bulb-on');
+                // Update badge
+                if (isON) {
+                    statusBadgeEl.textContent = "ON";
+                    statusBadgeEl.classList.remove("bg-gray-300", "dark:bg-gray-700", "text-gray-700", "dark:text-gray-200");
+                    statusBadgeEl.classList.add("bg-green-400", "dark:bg-green-600", "text-white");
+                } else if (status === "OFF") {
+                    statusBadgeEl.textContent = "OFF";
+                    statusBadgeEl.classList.remove("bg-green-400", "dark:bg-green-600", "text-white");
+                    statusBadgeEl.classList.add("bg-red-400", "dark:bg-red-600", "text-white");
+                } else {
+                    statusBadgeEl.textContent = "Unknown";
+                    statusBadgeEl.classList.remove("bg-green-400", "dark:bg-green-600", "bg-red-400", "dark:bg-red-600", "text-white");
+                    statusBadgeEl.classList.add("bg-gray-300", "dark:bg-gray-700", "text-gray-700", "dark:text-gray-200");
+                }
+                // Animate icon for ON state
+                if (isON) {
+                    iconContainerEl.classList.add("animate-pulse");
+                } else {
+                    iconContainerEl.classList.remove("animate-pulse");
+                }
             }
 
             function addLog(logText) {
                 const timestamp = new Date().toLocaleTimeString();
-                const logEntry = document.createElement('div');
                 const sanitizedText = logText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                logEntry.innerHTML = `<span class="text-cyan-600 dark:text-cyan-400">[${timestamp}]</span> > ${sanitizedText}`;
-                logContainerEl.appendChild(logEntry);
-                logContainerEl.scrollTop = logContainerEl.scrollHeight;
+                // Determine log type
+                let type = "system";
+                if (/Turned ON|ON/.test(logText)) type = "on";
+                else if (/Turned OFF|OFF/.test(logText)) type = "off";
+                else if (/timer|Timer|set/i.test(logText)) type = "timer";
+                else if (/Voice/i.test(logText)) type = "voice";
+                logEntries.push({ time: timestamp, text: sanitizedText, type });
+                renderLog();
             }
 
             // --- Timer Logic ---
@@ -510,7 +872,7 @@
                 const onTime = onTimeInput.value;
                 const offTime = offTimeInput.value;
                 if (!onTime || !offTime) {
-                    alert("Please select both ON and OFF times.");
+                    showToast("Please select both ON and OFF times.", "warning");
                     return;
                 }
                 const timerPayload = JSON.stringify({ on: onTime, off: offTime });
@@ -519,6 +881,7 @@
                 // Also publish to the functional topic for the ESP to act on
                 publishMessage(light_timer_set_topic, timerPayload, false);
                 addLog(`Setting timer: ON at ${onTime}, OFF at ${offTime}.`);
+                showToast(`Timer set: ON at ${onTime}, OFF at ${offTime}`, "success");
             });
 
             clearTimerBtn.addEventListener('click', () => {
@@ -527,6 +890,7 @@
                 // Publish the functional clear command to the ESP
                 publishMessage(light_timer_clear_topic, "CLEAR", false);
                 addLog("Active timer has been cleared.");
+                showToast("Active timer cleared", "info");
             });
 
             drawerOpen.onclick = () => {
@@ -546,7 +910,7 @@
                 const email = document.getElementById('feedback-email').value;
                 const message = document.getElementById('feedback-message').value;
 
-                const recipient = 'arnabmandal123123@gmail.com';
+                const recipient = 'pikumandal5233@gmail.com';
                 const subject = 'Feedback from Smart Home UI';
                 const body = `Message from: ${email}\n\n${message}`;
                 const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

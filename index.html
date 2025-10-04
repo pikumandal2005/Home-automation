@@ -4,8 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4f46e5"/>
     <title>Home Automation Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
     <script>
         // Dashboard Overview Logic
@@ -91,6 +93,10 @@
         .btn:hover, .btn:focus {
             background: linear-gradient(90deg, #4f46e5 0%, #6366f1 100%);
             box-shadow: 0 4px 16px 0 rgba(79,70,229,0.18);
+            transform: translateY(-2px);
+        }
+        .btn:disabled {
+            transform: translateY(0);
         }
         .dark .btn {
             background: linear-gradient(90deg, #6366f1 0%, #818cf8 100%);
@@ -98,19 +104,20 @@
         }
 
         /* Input styling */
-        input[type="time"], input[type="text"], input[type="email"], textarea {
+        input[type="time"], input[type="text"], input[type="email"], textarea, select {
             background: #f8fafc;
             border-radius: 0.5rem;
             border: 1px solid #cbd5e1;
             padding: 0.5rem 1rem;
             font-size: 1rem;
+            color: #22223b;
             transition: border-color 0.2s;
         }
-        input[type="time"]:focus, input[type="text"]:focus, input[type="email"]:focus, textarea:focus {
+        input[type="time"]:focus, input[type="text"]:focus, input[type="email"]:focus, textarea:focus, select:focus {
             border-color: #4f46e5;
             outline: none;
         }
-        .dark input[type="time"], .dark input[type="text"], .dark input[type="email"], .dark textarea {
+        .dark input[type="time"], .dark input[type="text"], .dark input[type="email"], .dark textarea, .dark select {
             background-color: #23293a;
             color: #e0e7ef;
             border-color: #334155;
@@ -119,44 +126,83 @@
             filter: invert(1);
         }
 
-        /* Toggle switch styling */
-        .toggle-checkbox {
-            appearance: none;
-            width: 2.5rem;
-            height: 1.25rem;
-            background: #e5e7eb;
-            border-radius: 1rem;
+        /* New Toggle Switch Styling */
+        .toggle-switch {
             position: relative;
-            outline: none;
+            display: inline-block;
+            width: 52px;
+            height: 32px;
             cursor: pointer;
-            transition: background 0.2s;
         }
-        .toggle-checkbox:checked {
-            background: #4f46e5;
+        .toggle-checkbox { /* This is the hidden input */
+            opacity: 0;
+            width: 0;
+            height: 0;
         }
-        .toggle-checkbox:before {
-            content: '';
+        .toggle-track {
             position: absolute;
-            left: 0.15rem;
-            top: 0.15rem;
-            width: 1rem;
-            height: 1rem;
-            background: #fff;
-            border-radius: 50%;
-            transition: transform 0.2s;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e1;
+            border-radius: 16px;
+            transition: background-color 0.2s ease-in-out;
         }
-        .toggle-checkbox:checked:before {
-            transform: translateX(1.25rem);
+        .dark .toggle-track {
+            background-color: #475569;
+        }
+        .toggle-thumb {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 24px;
+            height: 24px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s ease-in-out;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .toggle-checkbox:checked + .toggle-track {
+            background-color: #4f46e5;
+        }
+        .dark .toggle-checkbox:checked + .toggle-track {
+            background-color: #818cf8;
+        }
+        .toggle-checkbox:checked ~ .toggle-thumb {
+            transform: translateX(20px);
         }
 
-        /* Glowing effect for the bulb icon when it's on */
-        .dark .bulb-on {
-            color: #facc15;
-            filter: drop-shadow(0 0 8px #facc15) drop-shadow(0 0 16px #fde047);
+        /* Appliance Icon Styling */
+        .appliance-icon {
+            color: #94a3b8;
+            transition: color 0.3s, filter 0.3s, transform 0.3s;
         }
-        .bulb-on {
+        .dark .appliance-icon {
+            color: #64748b;
+        }
+        .icon-on[data-type="light"] .appliance-icon,
+        .icon-on[data-type="other"] .appliance-icon {
             color: #f59e0b;
-            filter: drop-shadow(0 0 4px #f59e0b);
+            filter: drop-shadow(0 0 5px #f59e0b);
+        }
+        .dark .icon-on[data-type="light"] .appliance-icon,
+        .dark .icon-on[data-type="other"] .appliance-icon {
+            color: #facc15;
+            filter: drop-shadow(0 0 8px #facc15);
+        }
+        .icon-on[data-type="fan"] .appliance-icon {
+            color: #38bdf8; /* sky-400 */
+            filter: drop-shadow(0 0 8px #38bdf8) drop-shadow(0 0 12px #38bdf8);
+            animation: spin 1s linear infinite;
+        }
+        .dark .icon-on[data-type="fan"] .appliance-icon {
+            color: #7dd3fc; /* sky-300 */
+            filter: drop-shadow(0 0 10px #7dd3fc) drop-shadow(0 0 15px #7dd3fc);
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
         /* Drawer styles */
@@ -195,6 +241,20 @@
         .dark .shadow-inner {
             box-shadow: 0 2px 8px 0 rgba(30,41,59,0.18);
         }
+
+        /* Animation for login page */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+            opacity: 0;
+        }
+        .delay-100 { animation-delay: 0.1s; }
+        .delay-200 { animation-delay: 0.2s; }
+        .delay-300 { animation-delay: 0.3s; }
+        .delay-400 { animation-delay: 0.4s; }
         @media (max-width: 640px) {
             .card {
                 padding: 1rem;
@@ -212,8 +272,8 @@
     <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-2 items-end pointer-events-none"></div>
 
     <!-- Theme Toggle Switch -->
-    <div class="fixed top-2 right-2 z-50">
-        <div class="flex items-center gap-1 bg-white dark:bg-slate-700 rounded-full shadow-lg px-2 py-1 border border-gray-200 dark:border-slate-600">
+    <div id="main-controls-header" class="fixed top-2 right-2 z-50 hidden">
+        <div class="flex items-center gap-1 bg-white dark:bg-slate-700 rounded-full shadow-lg p-1 border border-gray-200 dark:border-slate-600">
             <button id="theme-light" title="Light" class="theme-btn w-7 h-7 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M12 1v2m0 18v2m11-11h-2M3 12H1m16.95 6.95l-1.41-1.41M6.46 6.46L5.05 5.05m12.02 0l-1.41 1.41M6.46 17.54l-1.41 1.41"/></svg>
             </button>
@@ -223,10 +283,14 @@
             <button id="theme-system" title="System" class="theme-btn w-7 h-7 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-indigo-100 dark:hover:bg-indigo-800 transition">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4" stroke="currentColor" stroke-width="2"/><path stroke="currentColor" stroke-width="2" d="M8 8h8v8H8z"/></svg>
             </button>
+            <div class="border-l border-gray-200 dark:border-slate-600 h-5 mx-1"></div>
+            <button id="logout-btn-main" title="Logout" class="w-7 h-7 flex items-center justify-center rounded-full text-gray-700 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-800/50 transition">
+                <svg class="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+            </button>
         </div>
     </div>
     <!-- Drawer Backdrop -->
-    <div id="drawer-backdrop" class="fixed inset-0 z-40 drawer-backdrop hidden"></div>
+    <div id="drawer-backdrop" class="fixed inset-x0 z-40 drawer-backdrop hidden"></div>
     
     <!-- Drawer Menu -->
     <aside id="drawer" class="fixed top-0 left-0 h-full w-72 sm:w-80 bg-white dark:bg-slate-800 shadow-2xl z-50 drawer drawer-closed flex flex-col transition-all duration-300">
@@ -285,6 +349,10 @@
                 </form>
                 <p id="feedback-success" class="text-green-600 text-xs mt-2 hidden">Opening email client...</p>
             </section>
+            <!-- Logout Button -->
+            <div class="mt-auto p-4 border-t border-gray-200 dark:border-gray-700">
+                <button id="logout-btn" class="w-full text-left px-3 py-2 rounded text-gray-700 dark:text-gray-200 hover:bg-red-100 dark:hover:bg-red-800/50 flex items-center gap-2">Logout</button>
+            </div>
         </div>
     </aside>
 
@@ -294,38 +362,87 @@
     </button>
 
     <div class="flex items-center justify-center min-h-screen p-4">
-    <div class="w-full max-w-2xl mx-auto card p-8 space-y-8">
+    <!-- ================================================== -->
+    <!-- ==           AUTHENTICATION CONTAINER           == -->
+    <!-- ================================================== -->
+    <div id="auth-container" class="w-full max-w-sm mx-auto">
+        <div class="text-center mb-8 fade-in">
+            <svg class="mx-auto h-12 w-auto text-indigo-600 dark:text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5V10.75M2.25 21h1.5m18 0h-18M2.25 9l4.5-1.636M18.75 3l-1.5.545m0 6.205l3 1m-3-1l-3-1m-3 1l-3 1m-3-1l3 1m0 0l4.5-1.636m0 0l4.5 1.636m0 0l4.5-1.636m0 0l-1.5-.545m0 0l-1.5.545m0 0l-3 1m-3-1l3-1m3 1l3-1m-3 1l-3-1" />
+            </svg>
+            <h1 class="mt-4 text-3xl font-extrabold text-gray-900 dark:text-white fade-in delay-100">Welcome Back</h1>
+            <p class="mt-2 text-sm text-gray-600 dark:text-gray-400 fade-in delay-200">Log in to control your smart devices.</p>
+        </div>
+        <form class="space-y-6" onsubmit="event.preventDefault(); handleLogin();">
+            <div class="relative fade-in delay-200">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm-4 6a6 6 0 100-12 6 6 0 000 12z" /><path d="M16 12a4 4 0 10-8 0 4 4 0 008 0z" /><path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9" /><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </div>
+                  <input type=" email" id="login-email" required placeholder="Email" class="w-full pl-10">
+            </div>
+            <div class="relative fade-in delay-300">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                </div>
+                <input type="password" id="login-password" required placeholder="Password" class="w-full pl-10">
+                <button type="button" id="toggle-password" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-indigo-500">
+                    <svg id="eye-open" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    <svg id="eye-closed" class="h-5 w-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                </button>
+            </div>
+            <button id="login-btn" type="submit" class="btn w-full flex justify-center items-center fade-in delay-400">
+                <span id="login-btn-text">Log In</span>
+                <svg id="login-spinner" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </button>
+        </form>
+    </div>
+
+    <!-- ================================================== -->
+    <!-- ==             MAIN APP CONTAINER             == -->
+    <!-- ================================================== -->
+    <main id="main-app" class="hidden w-full max-w-2xl mx-auto card p-6 sm:p-8 space-y-8">
 
         <!-- Dashboard Overview -->
-        <div id="dashboard-overview" class="mb-6 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 shadow-inner flex flex-col gap-2">
-            <div class="flex justify-between items-center">
-                <span class="font-bold text-lg section-title">Dashboard Overview</span>
-                <span id="dashboard-timer-status" class="text-xs px-2 py-1 rounded bg-indigo-200 dark:bg-indigo-700 text-indigo-900 dark:text-indigo-100">No Timer</span>
-            </div>
-            <div class="flex justify-between items-center mt-2">
-                <span>Total Lights: <span id="dashboard-total-lights" class="font-semibold">4</span></span>
-                <span>ON: <span id="dashboard-on-count" class="font-semibold text-green-600">0</span></span>
-                <span>OFF: <span id="dashboard-off-count" class="font-semibold text-gray-500">0</span></span>
+        <div id="dashboard-overview" class="mb-6">
+            <h2 class="text-xl font-bold section-title mb-4">Dashboard</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 text-center">
+                <!-- Total Devices -->
+                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg shadow-inner">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Total</p>
+                    <p id="dashboard-total-lights" class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">0</p>
+                </div>
+                <!-- Devices ON -->
+                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg shadow-inner">
+                    <p class="text-sm text-green-600 dark:text-green-400">On</p>
+                    <p id="dashboard-on-count" class="text-2xl font-bold text-green-600 dark:text-green-400">0</p>
+                </div>
+                <!-- Devices OFF -->
+                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg shadow-inner">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Off</p>
+                    <p id="dashboard-off-count" class="text-2xl font-bold text-gray-600 dark:text-gray-400">0</p>
+                </div>
+                <!-- Timer Status -->
+                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg shadow-inner">
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Timer</p>
+                    <p id="dashboard-timer-status" class="text-sm font-semibold text-gray-600 dark:text-gray-300 mt-2">No Timer</p>
+                </div>
+                <!-- Connection Status -->
+                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg shadow-inner flex flex-col justify-center items-center">
+                    <div id="connection-status" class="flex items-center gap-1.5" title="Web UI Connection">
+                        <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                        <p class="text-xs font-medium text-red-500">UI</p>
+                    </div>
+                    <div id="esp-connection-status" class="flex items-center gap-1.5 mt-1" title="ESP Device Connection">
+                        <div class="w-2 h-2 rounded-full bg-gray-400"></div>
+                        <p class="text-xs font-medium text-gray-500">ESP</p>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <!-- Quick Action Buttons -->
-        <div class="flex justify-center gap-4 mb-4">
-            <button id="turn-all-on" class="btn flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                Turn All ON
-            </button>
-            <button id="turn-all-off" class="btn flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                Turn All OFF
-            </button>
-        </div>
-
-            <div class="text-center">
-                <h1 id="appliance-name" class="text-3xl font-bold section-title mb-2">Smart Light Control</h1>
-                <p id="connection-status" class="text-sm text-red-500 font-medium mt-2">Connecting to MQTT Broker...</p>
-            </div>
-
+        
             <!-- Voice Control Section -->
             <div class="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-4 flex flex-col items-center shadow-inner">
                 <div class="w-full flex flex-col items-center">
@@ -354,15 +471,37 @@
                 </div>
             </div>
 
+            <!-- Quick Action Buttons -->
+            <div class="flex justify-center gap-4">
+                <button id="turn-all-on" class="btn flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                    Turn All ON
+                </button>
+                <button id="turn-all-off" class="btn flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    Turn All OFF
+                </button>
+            </div>
+
             <!-- Light Control Cards Container -->
             <div id="light-card-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4">
                 <!-- Light Groups: Living Room, Bedroom -->
                 <div id="group-living" class="mb-4">
-                    <h3 class="font-semibold text-indigo-700 dark:text-indigo-300 mb-2">Living Room</h3>
+                    <div class="flex items-center gap-2 mb-2">
+                        <h3 id="room-name-living" class="font-semibold text-indigo-700 dark:text-indigo-300">Living Room</h3>
+                        <button class="edit-room-name-btn text-gray-400 hover:text-indigo-500" data-room="living">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
+                        </button>
+                    </div>
                     <div class="grid grid-cols-1 gap-4" id="living-room-cards"></div>
                 </div>
                 <div id="group-bedroom" class="mb-4">
-                    <h3 class="font-semibold text-indigo-700 dark:text-indigo-300 mb-2">Bedroom</h3>
+                    <div class="flex items-center gap-2 mb-2">
+                        <h3 id="room-name-bedroom" class="font-semibold text-indigo-700 dark:text-indigo-300">Bedroom</h3>
+                        <button class="edit-room-name-btn text-gray-400 hover:text-indigo-500" data-room="bedroom">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
+                        </button>
+                    </div>
                     <div class="grid grid-cols-1 gap-4" id="bedroom-cards"></div>
                 </div>
             </div>
@@ -408,10 +547,43 @@
         <!-- ...existing code... -->
             </div>
 
+        </main>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+            <h3 class="text-lg font-bold mb-4">Edit Appliance</h3>
+            <div class="space-y-4">
+                <div>
+                    <label for="edit-name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                    <input type="text" id="edit-name" class="mt-1 block w-full input">
+                </div>
+                <div>
+                    <label for="edit-type" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Type</label>
+                    <select id="edit-type" class="mt-1 block w-full input">
+                        <option value="light">Light</option>
+                        <option value="fan">Fan</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button id="cancel-edit-btn" class="btn bg-gray-500 hover:bg-gray-600">Cancel</button>
+                <button id="save-changes-btn" class="btn">Save</button>
+            </div>
         </div>
     </div>
 
     <script>
+        // IIFE to encapsulate the entire application logic
+        (function() {
+        // This script checks the user's system preference and applies the dark/light theme on load to prevent flashing.
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark')
+        } else {
+          document.documentElement.classList.remove('dark')
+        }
         // --- Enhanced Activity Log Logic ---
         const logEntries = [];
         function getLogIcon(type) {
@@ -455,6 +627,38 @@
             document.getElementById('log-filter').addEventListener('change', renderLog);
         });
 
+        // --- Dashboard Overview Logic ---
+        function updateDashboardOverview() {
+            const dashboardTotalLights = document.getElementById('dashboard-total-lights');
+            const dashboardOnCount = document.getElementById('dashboard-on-count');
+            const dashboardOffCount = document.getElementById('dashboard-off-count');
+            
+            if (!dashboardTotalLights) return; // Elements might not be ready
+
+            let onCount = 0;
+            const NUM_LIGHTS = 4; // Should be derived from `appliances` array
+            for (let i = 1; i <= NUM_LIGHTS; i++) {
+                const toggle = document.getElementById(`light-toggle-${i}`);
+                if (toggle && toggle.checked) onCount++;
+            }
+            dashboardTotalLights.textContent = NUM_LIGHTS;
+            dashboardOnCount.textContent = onCount;
+            dashboardOffCount.textContent = NUM_LIGHTS - onCount;
+        }
+
+        function updateDashboardTimerStatus(onTime, offTime) {
+            const dashboardTimerStatus = document.getElementById('dashboard-timer-status');
+            if (onTime && offTime) {
+                dashboardTimerStatus.textContent = `Active`;
+                dashboardTimerStatus.classList.remove('text-gray-600', 'dark:text-gray-300');
+                dashboardTimerStatus.classList.add('text-green-600', 'dark:text-green-400');
+            } else {
+                dashboardTimerStatus.textContent = 'No Timer';
+                dashboardTimerStatus.classList.remove('text-green-600', 'dark:text-green-400');
+                dashboardTimerStatus.classList.add('text-gray-600', 'dark:text-gray-300');
+            }
+        }
+
         function applyTheme(theme) {
             if (theme === 'dark') {
                 document.documentElement.classList.add('dark');
@@ -495,6 +699,82 @@
             document.getElementById('theme-light').onclick = () => applyTheme('light');
             document.getElementById('theme-dark').onclick = () => applyTheme('dark');
             document.getElementById('theme-system').onclick = () => applyTheme('system');
+
+            // --- Authentication Logic ---
+            const authContainer = document.getElementById('auth-container');
+            const mainAppContainer = document.getElementById('main-app');
+            const mainControlsHeader = document.getElementById('main-controls-header');
+            const logoutBtnDrawer = document.getElementById('logout-btn');
+            const logoutBtnMain = document.getElementById('logout-btn-main');
+            const passwordInput = document.getElementById('login-password');
+            const togglePasswordBtn = document.getElementById('toggle-password');
+            const eyeOpen = document.getElementById('eye-open');
+            const eyeClosed = document.getElementById('eye-closed');
+            const loginBtn = document.getElementById('login-btn');
+            const loginBtnText = document.getElementById('login-btn-text');
+            const loginSpinner = document.getElementById('login-spinner');
+
+            window.handleLogin = () => {
+                // --- FIXED CREDENTIALS ---
+                const FIXED_EMAIL = "sma@gmail.com";
+                const FIXED_PASSWORD = "sma0006Q";
+
+                loginBtnText.classList.add('hidden');
+                loginSpinner.classList.remove('hidden');
+                loginBtn.disabled = true;
+
+                const email = document.getElementById('login-email').value;
+                const password = document.getElementById('login-password').value;
+
+                // Simulate network delay for better UX
+                setTimeout(() => {
+                    if (email === FIXED_EMAIL && password === FIXED_PASSWORD) {
+                        sessionStorage.setItem('loggedInUser', email);
+                        showMainApp();
+                    } else {
+                        showToast('Invalid credentials.', 'error');
+                    }
+                    loginBtnText.classList.remove('hidden');
+                    loginSpinner.classList.add('hidden');
+                    loginBtn.disabled = false;
+                }, 500);
+            };
+
+            const showMainApp = () => {
+                authContainer.classList.add('hidden');
+                mainAppContainer.classList.remove('hidden');
+                mainControlsHeader.classList.remove('hidden');
+                // Connect to MQTT only after successful login
+                connectMqtt();
+            };
+
+            const showAuth = () => {
+                sessionStorage.removeItem('loggedInUser');
+                authContainer.classList.remove('hidden');
+                mainAppContainer.classList.add('hidden');
+                mainControlsHeader.classList.add('hidden');
+                if (client && client.isConnected()) {
+                    client.disconnect();
+                }
+            };
+
+            // Attach logout function to both buttons
+            logoutBtnDrawer.onclick = showAuth;
+            logoutBtnMain.onclick = showAuth;
+
+            // Show/Hide Password Logic
+            togglePasswordBtn.addEventListener('click', () => {
+                const isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                eyeOpen.classList.toggle('hidden', !isPassword);
+                eyeClosed.classList.toggle('hidden', isPassword);
+            });
+
+            // Reset login button state on page load
+            loginBtnText.classList.remove('hidden');
+            loginSpinner.classList.add('hidden');
+            loginBtn.disabled = false;
+
             const NUM_LIGHTS = 4;
             const lightCardContainer = document.getElementById('light-card-container');
             const turnAllOnBtn = document.getElementById('turn-all-on');
@@ -522,29 +802,48 @@
 
             // --- Dynamically Create Light Cards ---
             // Appliance definitions for grouping and icons
+            const ICONS = {
+                light: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 21a2 2 0 01-2-2V17a2 2 0 012-2h6a2 2 0 012 2v2a2 2 0 01-2 2H9zM9 15V9a3 3 0 013-3h0a3 3 0 013 3v6M12 6V3m-4 3h8"></path></svg>',
+                fan: '<svg class="w-16 h-16 mx-auto appliance-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5.5A6.5 6.5 0 1 0 18.5 12H12V5.5z" /><path d="M12 18.5A6.5 6.5 0 1 0 5.5 12H12v6.5z" /><path d="M5.5 12A6.5 6.5 0 1 0 12 5.5V12H5.5z" /></svg>',
+                other: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 20a1 1 0 01-1-1v-8H7a1 1 0 01-1-1V5a1 1 0 011-1h10a1 1 0 011 1v5a1 1 0 01-1 1h-3v8a1 1 0 01-1 1h-2z"></path></svg>'
+            };
             const appliances = [
-                { id: 1, name: 'Ceiling Light', group: 'living', icon: '<svg class="w-16 h-16 mx-auto text-yellow-400 dark:text-yellow-300" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a1 1 0 011 1v1a7 7 0 014.243 12.757A1 1 0 0114 18H6a1 1 0 01-.243-1.975A7 7 0 0110 4V3a1 1 0 01-1-1z"/><circle cx="12" cy="16" r="3"/></svg>' },
-                { id: 2, name: 'Table Lamp', group: 'living', icon: '<svg class="w-16 h-16 mx-auto text-amber-500 dark:text-amber-400" fill="currentColor" viewBox="0 0 24 24"><path d="M4 12l8-8 8 8H4z"/><rect x="10" y="16" width="4" height="4"/></svg>' },
-                { id: 3, name: 'Bedside Lamp', group: 'bedroom', icon: '<svg class="w-16 h-16 mx-auto text-indigo-400 dark:text-indigo-300" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="8" width="12" height="8" rx="2"/><rect x="10" y="16" width="4" height="4"/></svg>' },
-                { id: 4, name: 'Fan', group: 'bedroom', icon: '<svg class="w-16 h-16 mx-auto text-blue-400 dark:text-blue-300" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>' }
+                { id: 1, name: 'Ceiling Light', group: 'living', type: 'light' },
+                { id: 2, name: 'Table Lamp', group: 'living', type: 'light' },
+                { id: 3, name: 'Bedside Lamp', group: 'bedroom', type: 'light' },
+                { id: 4, name: 'Fan', group: 'bedroom', type: 'fan' }
             ];
 
             appliances.forEach(appliance => {
                 const cardHTML = `
-                <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 text-center transition-all duration-300">
+                <div id="card-${appliance.id}" class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 text-center transition-all duration-300">
                     <div id="name-container-${appliance.id}" class="flex items-center justify-center gap-2 mb-2">
                          <h2 id="appliance-name-${appliance.id}" class="text-lg font-bold text-gray-800 dark:text-gray-100">${appliance.name}</h2>
-                         <button class="edit-name-btn text-gray-400 hover:text-indigo-500" data-light-num="${appliance.id}">
+                         <button class="edit-btn text-gray-400 hover:text-indigo-500" data-light-num="${appliance.id}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
                          </button>
                     </div>
                     <div class="mb-4 relative flex items-center justify-center">
                         <span id="status-badge-${appliance.id}" class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-300">Unknown</span>
-                        <span id="icon-container-${appliance.id}">${appliance.icon}</span>
+                        <span id="icon-container-${appliance.id}" data-type="${appliance.type}">${ICONS[appliance.type] || ICONS['other']}</span>
                     </div>
-                    <div class="relative inline-block w-16 h-8 align-middle select-none">
-                        <input type="checkbox" id="light-toggle-${appliance.id}" data-light-num="${appliance.id}" class="toggle-checkbox absolute block w-8 h-8 rounded-full bg-white border-2 border-gray-300 appearance-none cursor-pointer transition-transform duration-300 ease-in-out"/>
-                        <label for="light-toggle-${appliance.id}" class="toggle-label block overflow-hidden h-8 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer transition-colors duration-300 ease-in-out"></label>
+                    <label for="light-toggle-${appliance.id}" class="toggle-switch">
+                        <input type="checkbox" id="light-toggle-${appliance.id}" data-light-num="${appliance.id}" class="toggle-checkbox"/>
+                        <span class="toggle-track"></span>
+                        <span class="toggle-thumb"></span>
+                    </label>
+
+                    <!-- Individual Timer Section -->
+                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                        <div class="flex items-center justify-center gap-2">
+                            <input type="time" id="timer-time-${appliance.id}" class="input w-28 text-sm timer-input" />
+                            <select id="timer-action-${appliance.id}" class="input text-sm timer-input">
+                                <option value="ON">ON</option>
+                                <option value="OFF">OFF</option>
+                            </select>
+                            <button class="set-individual-timer-btn btn text-sm" data-light-num="${appliance.id}">Set</button>
+                        </div>
+                        <div id="timer-list-${appliance.id}" class="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1"></div>
                     </div>
                 </div>`;
                 if (appliance.group === 'living') {
@@ -554,13 +853,120 @@
                 }
             });
 
+            // Initial dashboard update after creating cards
+            updateDashboardOverview();
+
+            
+            // --- Individual Timer Logic ---
+            let individualTimers = {}; // Format: { lightId: [{id, time, action, element}, ...], ... }
+
+            function setIndividualTimer(lightNum) {
+                const timeInput = document.getElementById(`timer-time-${lightNum}`);
+                const actionSelect = document.getElementById(`timer-action-${lightNum}`);
+                const time = timeInput.value;
+                const action = actionSelect.value;
+
+                if (!time) {
+                    showToast("Please select a time for the timer.", "warning");
+                    return;
+                }
+
+                if (!individualTimers[lightNum]) {
+                    individualTimers[lightNum] = [];
+                }
+
+                const timerId = `timer_${lightNum}_${new Date().getTime()}`;
+                individualTimers[lightNum].push({ id: timerId, time, action });
+                updateTimerList(lightNum);
+                showToast(`Timer set for ${document.getElementById(`appliance-name-${lightNum}`).textContent} to turn ${action} at ${time}.`, "info");
+                addLog(`Timer set for ${document.getElementById(`appliance-name-${lightNum}`).textContent} to turn ${action} at ${time}.`);
+                timeInput.value = "";
+            }
+
+            function removeIndividualTimer(lightNum, timerId) {
+                if (individualTimers[lightNum]) {
+                    individualTimers[lightNum] = individualTimers[lightNum].filter(timer => timer.id !== timerId);
+                    updateTimerList(lightNum);
+                    showToast("Timer removed.", "info");
+                }
+            }
+
+            function updateTimerList(lightNum) {
+                const timerListEl = document.getElementById(`timer-list-${lightNum}`);
+                timerListEl.innerHTML = '';
+                if (individualTimers[lightNum] && individualTimers[lightNum].length > 0) {
+                    individualTimers[lightNum].forEach(timer => {
+                        const timerEl = document.createElement('div');
+                        timerEl.className = 'flex items-center justify-between bg-indigo-100 dark:bg-indigo-800/50 p-1 rounded';
+                        timerEl.innerHTML = `
+                            <span>${timer.action} at ${new Date('1970-01-01T' + timer.time).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true})}</span>
+                            <button class="remove-individual-timer-btn text-red-500 hover:text-red-400" data-light-num="${lightNum}" data-timer-id="${timer.id}">&times;</button>
+                        `;
+                        timerListEl.appendChild(timerEl);
+                    });
+                } else {
+                    timerListEl.innerHTML = '<p class="text-gray-500">No active timers.</p>';
+                }
+            }
+
+            function checkTimers() {
+                const now = new Date();
+                const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+
+                for (const lightNum in individualTimers) {
+                    if (individualTimers[lightNum].length > 0) {
+                        individualTimers[lightNum].forEach(timer => {
+                            if (timer.time === currentTime) {
+                                const applianceName = document.getElementById(`appliance-name-${lightNum}`).textContent;
+                                publishMessage(`homeautomation/project/light/${lightNum}/set`, timer.action, false);
+                                addLog(`Timer executed: Turned ${timer.action} ${applianceName}.`);
+                                showToast(`Timer: Turned ${timer.action} ${applianceName}.`, "success");
+                                // Remove timer after execution
+                                removeIndividualTimer(lightNum, timer.id);
+                            }
+                        });
+                    }
+                }
+            }
+
+            setInterval(checkTimers, 1000); // Check every second
+
+            // --- Toast Notification Logic ---
+            function showToast(message, type = 'info') {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                const colors = {
+                    info: 'bg-blue-500',
+                    success: 'bg-green-500',
+                    warning: 'bg-yellow-500',
+                    error: 'bg-red-500'
+                };
+                toast.className = `pointer-events-auto text-white text-sm rounded-lg shadow-lg px-4 py-2 transform transition-all duration-300 ease-in-out ${colors[type]} translate-x-full opacity-0`;
+                toast.textContent = message;
+                container.appendChild(toast);
+
+                // Animate in
+                setTimeout(() => {
+                    toast.classList.remove('translate-x-full', 'opacity-0');
+                }, 100);
+
+                // Animate out and remove
+                setTimeout(() => {
+                    toast.classList.add('opacity-0', 'translate-x-full');
+                    setTimeout(() => toast.remove(), 300);
+                }, 4000);
+            }
+
             // --- MQTT Configuration ---
             const brokerHost = "test.mosquitto.org";
             const brokerPort = 8081;
             const clientId = "WebAppClient_" + new Date().getTime();
             // --- TOPICS FOR SYNCING STATE ---
             const light_name_topic_wildcard = "homeautomation/project/light/+/name";
+            const light_type_topic_wildcard = "homeautomation/project/light/+/type";
+            const room_name_topic_wildcard = "homeautomation/project/room/+/name";
             const light_config_timer_topic = "homeautomation/project/config/timer";
+            const esp_status_topic = "homeautomation/project/esp/status";
             // --- TOPICS FOR FUNCTIONALITY ---
             const light_status_topic_wildcard = "homeautomation/project/light/+/status";
             const light_log_topic = "homeautomation/project/light/log";
@@ -569,6 +975,7 @@
 
             // --- UI Elements ---
             const connectionStatusEl = document.getElementById('connection-status');
+            const espConnectionStatusEl = document.getElementById('esp-connection-status');
             const logContainerEl = document.getElementById('log-container');
             const setTimerBtn = document.getElementById('set-timer-btn');
             const onTimeInput = document.getElementById('on-time');
@@ -598,33 +1005,60 @@
                 onFailure: onFailure,
             });
 
+            function connectMqtt() {
+                if (client.isConnected()) {
+                    console.log("Already connected to MQTT.");
+                    return;
+                }
+                client.onConnectionLost = onConnectionLost;
+                client.onMessageArrived = onMessageArrived;
+                client.connect({
+                    timeout: 3,
+                    useSSL: true,
+                    onSuccess: onConnect,
+                    onFailure: onFailure,
+                });
+            }
+            
             // --- MQTT Functions ---
             function onConnect() {
-                connectionStatusEl.textContent = "Connected to MQTT Broker";
-                connectionStatusEl.classList.replace('text-red-500', 'text-green-500');
+                const statusDot = connectionStatusEl.querySelector('div');
+                const statusText = connectionStatusEl.querySelector('p');
+                statusDot.classList.replace('bg-red-500', 'bg-green-500');
+                statusDot.classList.remove('animate-pulse');
+                statusText.classList.replace('text-red-500', 'text-green-500');
                 // Subscribe to all functional topics
                 client.subscribe(light_status_topic_wildcard);
                 client.subscribe(light_log_topic);
                 // --- SUBSCRIBE TO STATE TOPICS TO SYNC ---
                 client.subscribe(light_name_topic_wildcard);
+                client.subscribe(light_type_topic_wildcard);
+                client.subscribe(room_name_topic_wildcard);
                 client.subscribe(light_config_timer_topic);
+                client.subscribe(esp_status_topic);
 
                 addLog("Web UI connected. Requesting initial status...");
                 for (let i = 1; i <= NUM_LIGHTS; i++) {
                     publishMessage(`homeautomation/project/light/${i}/getStatus`, "GET", false); // Don't retain status requests
                 }
+                updateDashboardOverview();
             }
 
             function onFailure(message) {
-                console.error("Connection failed: " + message.errorMessage);
-                connectionStatusEl.textContent = "Connection Failed. Refresh to try again.";
+                const statusText = connectionStatusEl.querySelector('p');
+                statusText.textContent = "UI Failed";
+                console.error("UI Connection failed: " + message.errorMessage);
             }
 
             function onConnectionLost(responseObject) {
                 if (responseObject.errorCode !== 0) {
-                    console.error("Connection lost: " + responseObject.errorMessage);
-                    connectionStatusEl.textContent = "Connection Lost. Please refresh.";
-                    connectionStatusEl.classList.replace('text-green-500', 'text-red-500');
+                    const statusDot = connectionStatusEl.querySelector('div');
+                    const statusText = connectionStatusEl.querySelector('p');
+                    statusDot.classList.replace('bg-green-500', 'bg-red-500');
+                    statusDot.classList.add('animate-pulse');
+                    statusText.classList.replace('text-green-500', 'text-red-500');
+                    statusText.textContent = "UI Lost";
+                    console.error("UI Connection lost: " + responseObject.errorMessage);
                 }
             }
 
@@ -642,11 +1076,34 @@
                     if (!isNaN(lightNumber)) updateLightUI(lightNumber, payload);
                 }
                 // --- HANDLE INCOMING STATE SYNC MESSAGES ---
+                else if (topic.startsWith("homeautomation/project/room/")) {
+                    const topicParts = topic.split('/');
+                    const room = topicParts[3];
+                    const nameEl = document.getElementById(`room-name-${room}`);
+                    if (nameEl && payload) {
+                        nameEl.textContent = payload;
+                    }
+                }
                 else if (topic.includes("/name")) {
                     const topicParts = topic.split('/');
                     const lightNumber = parseInt(topicParts[3]);
                     if (!isNaN(lightNumber) && payload) {
+                        const appliance = appliances.find(a => a.id == lightNumber);
+                        if(appliance) appliance.name = payload;
                         document.getElementById(`appliance-name-${lightNumber}`).textContent = payload;
+                    }
+                }
+                else if (topic.includes("/type")) {
+                    const topicParts = topic.split('/');
+                    const lightNumber = parseInt(topicParts[3]);
+                    if (!isNaN(lightNumber) && payload) {
+                        const appliance = appliances.find(a => a.id == lightNumber);
+                        if (appliance) {
+                            appliance.type = payload;
+                            const iconContainer = document.getElementById(`icon-container-${lightNumber}`);
+                            iconContainer.innerHTML = ICONS[payload] || ICONS['other'];
+                            iconContainer.dataset.type = payload;
+                        }
                     }
                 }
                 else if (topic === light_config_timer_topic) {
@@ -657,6 +1114,21 @@
                         displayActiveTimer(on, off);
                     } else { // If payload is empty, clear timer
                         hideActiveTimer();
+                    }
+                }
+                else if (topic === esp_status_topic) {
+                    const espStatusDot = espConnectionStatusEl.querySelector('div');
+                    const espStatusText = espConnectionStatusEl.querySelector('p');
+                    if (payload === "online") {
+                        espStatusDot.classList.remove('bg-gray-400', 'bg-red-500');
+                        espStatusDot.classList.add('bg-green-500');
+                        espStatusText.classList.remove('text-gray-500', 'text-red-500');
+                        espStatusText.classList.add('text-green-500');
+                    } else { // "offline" or any other status
+                        espStatusDot.classList.remove('bg-gray-400', 'bg-green-500');
+                        espStatusDot.classList.add('bg-red-500');
+                        espStatusText.classList.remove('text-gray-500', 'text-green-500');
+                        espStatusText.classList.add('text-red-500');
                     }
                 }
             }
@@ -696,10 +1168,12 @@
                 }
                 // Animate icon for ON state
                 if (isON) {
-                    iconContainerEl.classList.add("animate-pulse");
+                    iconContainerEl.classList.add("icon-on");
                 } else {
-                    iconContainerEl.classList.remove("animate-pulse");
+                    iconContainerEl.classList.remove("icon-on");
                 }
+                // Update the main dashboard overview whenever a light's UI changes
+                updateDashboardOverview();
             }
 
             function addLog(logText) {
@@ -811,45 +1285,96 @@
             }
 
             // --- Name Editing Logic ---
-            function enableNameEditing(lightNum) {
-                const nameContainer = document.getElementById(`name-container-${lightNum}`);
-                const nameEl = document.getElementById(`appliance-name-${lightNum}`);
-                const currentName = nameEl.textContent;
-                
-                nameContainer.innerHTML = `
-                    <input type="text" value="${currentName}" class="inline-name-input text-center text-lg font-bold bg-transparent border-b-2 border-indigo-400 focus:outline-none w-32 text-gray-800 dark:text-gray-100">
-                    <button class="save-name-btn text-green-500 hover:text-green-400" data-light-num="${lightNum}">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                    </button>`;
+            let editingLightNum = null;
+            const editModal = document.getElementById('edit-modal');
+            const editNameInput = document.getElementById('edit-name');
+            const editTypeSelect = document.getElementById('edit-type');
 
-                const inputEl = nameContainer.querySelector('.inline-name-input');
-                inputEl.focus();
-                inputEl.select();
-                
-                const saveHandler = () => saveName(lightNum);
-                nameContainer.querySelector('.save-name-btn').addEventListener('click', saveHandler);
-                inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveHandler(); }});
-                inputEl.addEventListener('blur', saveHandler);
+            function openEditModal(lightNum) {
+                editingLightNum = lightNum;
+                const appliance = appliances.find(a => a.id == lightNum);
+                editNameInput.value = appliance.name;
+                editTypeSelect.value = appliance.type;
+                editModal.classList.remove('hidden');
+                editModal.classList.add('flex');
             }
 
-            function saveName(lightNum) {
-                const nameContainer = document.getElementById(`name-container-${lightNum}`);
-                const inputEl = nameContainer.querySelector('.inline-name-input');
-                if(!inputEl) return;
+            function closeEditModal() {
+                editingLightNum = null;
+                editModal.classList.add('hidden');
+                editModal.classList.remove('flex');
+            }
 
-                const newName = inputEl.value.trim();
-                
-                if (newName) {
-                    // --- PUBLISH NAME TO MQTT BROKER ---
-                    publishMessage(`homeautomation/project/light/${lightNum}/name`, newName, true); // Retained
+            document.getElementById('save-changes-btn').addEventListener('click', () => {
+                if (editingLightNum) {
+                    const newName = editNameInput.value.trim();
+                    const newType = editTypeSelect.value;
+                    saveChanges(editingLightNum, newName, newType);
                 }
-                // The UI will update automatically when the retained message is received back from the broker.
-                // This ensures all clients are in sync. We'll just restore the original UI structure for now.
-                nameContainer.innerHTML = `
-                    <h2 id="appliance-name-${lightNum}" class="text-lg font-bold text-gray-800 dark:text-gray-100">${newName || `Light ${lightNum}`}</h2>
-                    <button class="edit-name-btn text-gray-400 hover:text-indigo-500" data-light-num="${lightNum}">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
-                    </button>`;
+                closeEditModal();
+            });
+
+            document.getElementById('cancel-edit-btn').addEventListener('click', closeEditModal);
+
+            function saveChanges(lightNum, newName, newType) {
+                const appliance = appliances.find(a => a.id == lightNum);
+                if (newName && newName !== appliance.name) {
+                    appliance.name = newName;
+                    document.getElementById(`appliance-name-${lightNum}`).textContent = newName;
+                    publishMessage(`homeautomation/project/light/${lightNum}/name`, newName, true);
+                }
+                if (newType && newType !== appliance.type) {
+                    appliance.type = newType;
+                    const iconContainer = document.getElementById(`icon-container-${lightNum}`);
+                    iconContainer.innerHTML = ICONS[newType] || ICONS['other'];
+                    iconContainer.dataset.type = newType;
+                    publishMessage(`homeautomation/project/light/${lightNum}/type`, newType, true);
+                }
+            }
+
+            function enableRoomNameEditing(room) {
+                const nameEl = document.getElementById(`room-name-${room}`);
+                const currentName = nameEl.textContent;
+                
+                const inputEl = document.createElement('input');
+                inputEl.type = 'text';
+                inputEl.value = currentName;
+                inputEl.className = 'room-name-input font-semibold bg-transparent border-b-2 border-indigo-400 focus:outline-none text-gray-800 dark:text-gray-100';
+
+                nameEl.replaceWith(inputEl);
+                inputEl.focus();
+                inputEl.select();
+
+                const saveAndReplace = () => {
+                    const newName = inputEl.value.trim();
+                    
+                    const newNameEl = document.createElement('h3');
+                    newNameEl.id = `room-name-${room}`;
+                    newNameEl.className = 'font-semibold text-indigo-700 dark:text-indigo-300';
+                    
+                    if (newName && newName !== currentName) {
+                        saveRoomName(room, newName);
+                        newNameEl.textContent = newName;
+                    } else {
+                        newNameEl.textContent = currentName;
+                    }
+                    inputEl.replaceWith(newNameEl);
+                };
+
+                inputEl.addEventListener('blur', saveAndReplace);
+                inputEl.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        saveAndReplace();
+                    } else if (e.key === 'Escape') {
+                        inputEl.value = currentName; // Revert change
+                        saveAndReplace();
+                    }
+                });
+            }
+
+            function saveRoomName(room, newName) {
+                publishMessage(`homeautomation/project/room/${room}/name`, newName, true);
             }
             
             // --- Event Listeners ---
@@ -862,9 +1387,24 @@
             });
 
             lightCardContainer.addEventListener('click', function(event) {
-                const editBtn = event.target.closest('.edit-name-btn');
+                const editBtn = event.target.closest('.edit-btn');
                 if (editBtn) {
-                    enableNameEditing(editBtn.dataset.lightNum);
+                    openEditModal(editBtn.dataset.lightNum);
+                }
+
+                const editRoomBtn = event.target.closest('.edit-room-name-btn');
+                if (editRoomBtn) {
+                    enableRoomNameEditing(editRoomBtn.dataset.room);
+                }
+
+                const setTimerBtn = event.target.closest('.set-individual-timer-btn');
+                if (setTimerBtn) {
+                    setIndividualTimer(setTimerBtn.dataset.lightNum);
+                }
+
+                const removeTimerBtn = event.target.closest('.remove-individual-timer-btn');
+                if (removeTimerBtn) {
+                    removeIndividualTimer(removeTimerBtn.dataset.lightNum, removeTimerBtn.dataset.timerId);
                 }
             });
             
@@ -932,8 +1472,25 @@
                     instructionChevron.classList.remove('rotate-180');
                 }
             });
+
+            // --- Initial Page Load Check ---
+            if (sessionStorage.getItem('loggedInUser')) {
+                showMainApp();
+            }
+
+            // --- PWA Service Worker Registration ---
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js').then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    }, err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+                });
+            }
         });
+
+        })(); // End of IIFE
     </script>
 </body>
 </html>
-

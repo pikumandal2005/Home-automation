@@ -856,63 +856,6 @@
                     showToast("All lights turned OFF", "error");
                 });
 
-                // --- Dynamically Create Light Cards ---
-                // Appliance definitions for grouping and icons
-                const ICONS = {
-                    light: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 21a2 2 0 01-2-2V17a2 2 0 012-2h6a2 2 0 012 2v2a2 2 0 01-2 2H9zM9 15V9a3 3 0 013-3h0a3 3 0 013 3v6M12 6V3m-4 3h8"></path></svg>',
-                    fan: '<svg class="w-16 h-16 mx-auto appliance-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5.5A6.5 6.5 0 1 0 18.5 12H12V5.5z" /><path d="M12 18.5A6.5 6.5 0 1 0 5.5 12H12v6.5z" /><path d="M5.5 12A6.5 6.5 0 1 0 12 5.5V12H5.5z" /></svg>',
-                    other: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 20a1 1 0 01-1-1v-8H7a1 1 0 01-1-1V5a1 1 0 011-1h10a1 1 0 011 1v5a1 1 0 01-1 1h-3v8a1 1 0 01-1 1h-2z"></path></svg>'
-                };
-                const appliances = [
-                    { id: 1, name: 'Ceiling Light', group: 'living', type: 'light' },
-                    { id: 2, name: 'Table Lamp', group: 'living', type: 'light' },
-                    { id: 3, name: 'Bedside Lamp', group: 'bedroom', type: 'light' },
-                    { id: 4, name: 'Fan', group: 'bedroom', type: 'fan' }
-                ];
-
-                appliances.forEach(appliance => {
-                    const cardHTML = `
-                    <div id="card-${appliance.id}" class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 text-center transition-all duration-300">
-                        <div id="name-container-${appliance.id}" class="flex items-center justify-center gap-2 mb-2">
-                             <h2 id="appliance-name-${appliance.id}" class="text-lg font-bold text-gray-800 dark:text-gray-100">${appliance.name}</h2>
-                             <button class="edit-btn text-gray-400 hover:text-indigo-500" data-light-num="${appliance.id}">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
-                             </button>
-                        </div>
-                        <div class="mb-4 relative flex items-center justify-center">
-                            <span id="status-badge-${appliance.id}" class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-300">Unknown</span>
-                            <span id="icon-container-${appliance.id}" data-type="${appliance.type}">${ICONS[appliance.type] || ICONS['other']}</span>
-                        </div>
-                        <label for="light-toggle-${appliance.id}" class="toggle-switch">
-                            <input type="checkbox" id="light-toggle-${appliance.id}" data-light-num="${appliance.id}" class="toggle-checkbox"/>
-                            <span class="toggle-track"></span>
-                            <span class="toggle-thumb"></span>
-                        </label>
-
-                        <!-- Individual Timer Section -->
-                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                            <div class="flex items-center justify-center gap-2">
-                                <input type="time" id="timer-time-${appliance.id}" class="input w-28 text-sm timer-input" />
-                                <select id="timer-action-${appliance.id}" class="input text-sm timer-input">
-                                    <option value="ON">ON</option>
-                                    <option value="OFF">OFF</option>
-                                </select>
-                                <button class="set-individual-timer-btn btn text-sm" data-light-num="${appliance.id}">Set</button>
-                            </div>
-                            <div id="timer-list-${appliance.id}" class="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1"></div>
-                        </div>
-                    </div>`;
-                    if (appliance.group === 'living') {
-                        document.getElementById('living-room-cards').insertAdjacentHTML('beforeend', cardHTML);
-                    } else {
-                        document.getElementById('bedroom-cards').insertAdjacentHTML('beforeend', cardHTML);
-                    }
-                });
-
-                // Initial dashboard update after creating cards
-                updateDashboardOverview();
-
-                
                 // --- Individual Timer Logic ---
                 let individualTimers = {}; // Format: { lightId: [{id, time, action, element}, ...], ... }
 
@@ -1427,15 +1370,6 @@
                     publishMessage(`homeautomation/project/room/${room}/name`, newName, true);
                 }
                 
-                // --- Event Listeners ---
-                document.querySelectorAll('.toggle-checkbox').forEach(toggle => {
-                    toggle.addEventListener('change', (event) => {
-                        const lightNum = event.target.dataset.lightNum;
-                        const state = event.target.checked ? "ON" : "OFF";
-                        publishMessage(`homeautomation/project/light/${lightNum}/set`, state, false);
-                    });
-                });
-
                 lightCardContainer.addEventListener('click', function(event) {
                     const editBtn = event.target.closest('.edit-btn');
                     if (editBtn) {
@@ -1445,6 +1379,13 @@
                     const editRoomBtn = event.target.closest('.edit-room-name-btn');
                     if (editRoomBtn) {
                         enableRoomNameEditing(editRoomBtn.dataset.room);
+                    }
+                    
+                    const toggle = event.target.closest('.toggle-checkbox');
+                    if (toggle) {
+                        const lightNum = toggle.dataset.lightNum;
+                        const state = toggle.checked ? "ON" : "OFF";
+                        publishMessage(`homeautomation/project/light/${lightNum}/set`, state, false);
                     }
 
                     const setTimerBtn = event.target.closest('.set-individual-timer-btn');
@@ -1558,10 +1499,65 @@
                     showMainApp();
                 }
 
+                // --- DYNAMIC UI RENDERING ---
+                const ICONS = {
+                    light: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 21a2 2 0 01-2-2V17a2 2 0 012-2h6a2 2 0 012 2v2a2 2 0 01-2 2H9zM9 15V9a3 3 0 013-3h0a3 3 0 013 3v6M12 6V3m-4 3h8"></path></svg>',
+                    fan: '<svg class="w-16 h-16 mx-auto appliance-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5.5A6.5 6.5 0 1 0 18.5 12H12V5.5z" /><path d="M12 18.5A6.5 6.5 0 1 0 5.5 12H12v6.5z" /><path d="M5.5 12A6.5 6.5 0 1 0 12 5.5V12H5.5z" /></svg>',
+                    other: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 20a1 1 0 01-1-1v-8H7a1 1 0 01-1-1V5a1 1 0 011-1h10a1 1 0 011 1v5a1 1 0 01-1 1h-3v8a1 1 0 01-1 1h-2z"></path></svg>'
+                };
+                const appliances = [
+                    { id: 1, name: 'Ceiling Light', group: 'living', type: 'light' },
+                    { id: 2, name: 'Table Lamp', group: 'living', type: 'light' },
+                    { id: 3, name: 'Bedside Lamp', group: 'bedroom', type: 'light' },
+                    { id: 4, name: 'Fan', group: 'bedroom', type: 'fan' }
+                ];
+
+                function createApplianceCard(appliance) {
+                    return `
+                    <div id="card-${appliance.id}" class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 text-center transition-all duration-300">
+                        <div id="name-container-${appliance.id}" class="flex items-center justify-center gap-2 mb-2">
+                             <h2 id="appliance-name-${appliance.id}" class="text-lg font-bold text-gray-800 dark:text-gray-100">${appliance.name}</h2>
+                             <button class="edit-btn text-gray-400 hover:text-indigo-500" data-light-num="${appliance.id}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
+                             </button>
+                        </div>
+                        <div class="mb-4 relative flex items-center justify-center">
+                            <span id="status-badge-${appliance.id}" class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-300">Unknown</span>
+                            <span id="icon-container-${appliance.id}" data-type="${appliance.type}">${ICONS[appliance.type] || ICONS['other']}</span>
+                        </div>
+                        <label for="light-toggle-${appliance.id}" class="toggle-switch">
+                            <input type="checkbox" id="light-toggle-${appliance.id}" data-light-num="${appliance.id}" class="toggle-checkbox"/>
+                            <span class="toggle-track"></span>
+                            <span class="toggle-thumb"></span>
+                        </label>
+
+                        <!-- Individual Timer Section -->
+                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <div class="flex items-center justify-center gap-2">
+                                <input type="time" id="timer-time-${appliance.id}" class="input w-28 text-sm timer-input" />
+                                <select id="timer-action-${appliance.id}" class="input text-sm timer-input">
+                                    <option value="ON">ON</option>
+                                    <option value="OFF">OFF</option>
+                                </select>
+                                <button class="set-individual-timer-btn btn text-sm" data-light-num="${appliance.id}">Set</button>
+                            </div>
+                            <div id="timer-list-${appliance.id}" class="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1"></div>
+                        </div>
+                    </div>`;
+                }
+
+                function renderAllAppliances() {
+                    const livingRoomContainer = document.getElementById('living-room-cards');
+                    const bedroomContainer = document.getElementById('bedroom-cards');
+                    livingRoomContainer.innerHTML = appliances.filter(a => a.group === 'living').map(createApplianceCard).join('');
+                    bedroomContainer.innerHTML = appliances.filter(a => a.group === 'bedroom').map(createApplianceCard).join('');
+                    updateDashboardOverview();
+                }
+                renderAllAppliances();
+
             });
 
         })(); // End of IIFE
     </script>
 </body>
 </html>
-

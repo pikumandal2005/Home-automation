@@ -4,41 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#4f46e5"/>
     <title>Home Automation Control</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="manifest" href="manifest.json">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
     <script>
-        // Dashboard Overview Logic
-        const dashboardTotalLights = document.getElementById('dashboard-total-lights');
-        const dashboardOnCount = document.getElementById('dashboard-on-count');
-        const dashboardOffCount = document.getElementById('dashboard-off-count');
-        const dashboardTimerStatus = document.getElementById('dashboard-timer-status');
-
-        function updateDashboardOverview() {
-            let onCount = 0, offCount = 0;
-            for (let i = 1; i <= NUM_LIGHTS; i++) {
-                const toggle = document.getElementById(`light-toggle-${i}`);
-                if (toggle && toggle.checked) onCount++;
-                else offCount++;
-            }
-            dashboardTotalLights.textContent = NUM_LIGHTS;
-            dashboardOnCount.textContent = onCount;
-            dashboardOffCount.textContent = offCount;
-        }
-
-        function updateDashboardTimerStatus(onTime, offTime) {
-            if (onTime && offTime) {
-                dashboardTimerStatus.textContent = `Timer: ON ${onTime}, OFF ${offTime}`;
-                dashboardTimerStatus.classList.remove('bg-indigo-200', 'dark:bg-indigo-700');
-                dashboardTimerStatus.classList.add('bg-green-200', 'dark:bg-green-700');
-            } else {
-                dashboardTimerStatus.textContent = 'No Timer';
-                dashboardTimerStatus.classList.remove('bg-green-200', 'dark:bg-green-700');
-                dashboardTimerStatus.classList.add('bg-indigo-200', 'dark:bg-indigo-700');
-            }
-        }
         // This script checks the user's system preference and applies the dark/light theme on load to prevent flashing.
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
           document.documentElement.classList.add('dark')
@@ -47,7 +16,7 @@
         }
     </script>
     <style>
-        heme toggle button styling */
+        /* Theme toggle button styling */
         .theme-btn.active {
             background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%);
             color: #fff !important;
@@ -219,6 +188,37 @@
             transform: translateX(0);
         }
 
+        /* Accordion Styles */
+        .accordion-toggle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            padding: 0.75rem 0.5rem;
+            font-weight: 600;
+            color: #4338ca; /* indigo-700 */
+            background-color: #eef2ff; /* indigo-50 */
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+        .dark .accordion-toggle {
+            color: #a5b4fc; /* indigo-300 */
+            background-color: #3730a3; /* indigo-800 */
+        }
+        .accordion-toggle:hover {
+             background-color: #e0e7ff; /* indigo-100 */
+        }
+        .dark .accordion-toggle:hover {
+             background-color: #4338ca; /* indigo-700 */
+        }
+        .accordion-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease-in-out;
+            max-height: 0;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+
         /* Misc improvements */
         .section-title {
             font-size: 1.1rem;
@@ -290,69 +290,130 @@
         </div>
     </div>
     <!-- Drawer Backdrop -->
-    <div id="drawer-backdrop" class="fixed inset-x0 z-40 drawer-backdrop hidden"></div>
+    <div id="drawer-backdrop" class="fixed inset-0 z-40 drawer-backdrop hidden"></div>
     
     <!-- Drawer Menu -->
     <aside id="drawer" class="fixed top-0 left-0 h-full w-72 sm:w-80 bg-white dark:bg-slate-800 shadow-2xl z-50 drawer drawer-closed flex flex-col transition-all duration-300">
-                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                        <span class="text-base font-bold text-indigo-700 dark:text-indigo-300">Menu</span>
-                        <button id="drawer-close" class="text-gray-500 hover:text-indigo-600 text-xl">&times;</button>
+        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+            <span class="text-base font-bold text-indigo-700 dark:text-indigo-300">Menu</span>
+            <button id="drawer-close" class="text-gray-500 hover:text-indigo-600 text-xl">&times;</button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-3 space-y-2">
+            <!-- Section 1: Project Team Members -->
+            <div class="accordion-item">
+                <button class="accordion-toggle" data-accordion="team">
+                    <span>Project Team Members</span>
+                    <svg class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="accordion-content" id="accordion-team">
+                    <div class="pt-3 pb-2 space-y-4">
+                        <div class="flex items-center gap-3">
+                            <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAgACAYDASIAAhEBAxEB/8QAFwABAQEBAAAAAAAAAAAAAAAAAQIGAP/EACQQAAIABgICAwEAAAAAAAAAAAABAgMEBREhBhITYSIxMkFR/8QAFgEBAQEAAAAAAAAAAAAAAAAAAgED/8QAGhEBAQEBAQEBAAAAAAAAAAAAAAECETEDEv/aAAwDAQACEQMRAD8A95AGQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA- " alt="Piku Mandal Profile" class="w-12 h-12 rounded-full border-2 border-indigo-500">
+                            <div>
+                                <h3 class="text-base font-bold text-indigo-700 dark:text-indigo-300">Piku Mandal</h3>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">B.Tech, Electrical Engineering</p>
+                                <div class="flex gap-2 mt-1 items-center flex-wrap">
+                                    <span class="flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Gmail_Icon.png" alt="Gmail" class="w-4 h-4">
+                                        <span class="font-mono select-all text-xs">pikumandal5233@gmail.com</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAIBAQEBAQIBAQECAgICAgQDAgICAgUEBAMEBgUGBgYFBgYGBwkIBgcJBwYGCAsICQoKCgoKBggLDAsKDAkKCgr/2wBDAQICAgICAgUDAwUKBwYHCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgr/wAARCAgACAYDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKK- " alt="Arnab Mandal Profile" class="w-12 h-12 rounded-full border-2 border-indigo-500">
+                            <div>
+                                <h3 class="text-base font-bold text-indigo-700 dark:text-indigo-300">Arnab Mandal</h3>
+                                <p class="text-xs text-gray-600 dark:text-gray-400">Diploma, Electrical Engineering</p>
+                                <span class="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 mt-1">
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Gmail_Icon.png" alt="Gmail" class="w-4 h-4">
+                                    <span class="font-mono select-all text-xs">arnabmandal123123@gmail.com</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-                                    <!-- Compact & Responsive About Section -->
-                                    <section class="about-card bg-white dark:bg-slate-800 rounded-lg shadow p-3 mb-2 border-b dark:border-gray-700">
-                                        <div class="mb-2">
-                                            <span class="block text-xs font-semibold text-gray-500 dark:text-gray-400">Founder & CEO</span>
-                                        </div>
-                                        <div class="flex items-center gap-3">
-                                            <img src="Piku-Image.jpg" alt="Piku Mandal Profile" class="w-12 h-12 rounded-full border-2 border-indigo-500">
-                                            <div>
-                                                <h3 class="text-base font-bold text-indigo-700 dark:text-indigo-300">Piku Mandal</h3>
-                                                <p class="text-xs text-gray-600 dark:text-gray-400">B.Tech, Electrical Engineering</p>
-                                                <div class="flex gap-2 mt-1 items-center flex-wrap">
-                                                    <span class="flex items-center gap-1 text-indigo-600 dark:text-indigo-400">
-                                                        <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Gmail_Icon.png" alt="Gmail" class="w-4 h-4">
-                                                        <span class="font-mono select-all text-xs">pikumandal5233@gmail.com</span>
-                                                    </span>
-                                                    <a href="https://www.instagram.com/its_piku_mandal/" target="_blank" class="text-pink-500 underline flex items-center gap-1 text-xs">
-                                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M7.75 2h8.5A5.75 5.75 0 0122 7.75v8.5A5.75 5.75 0 0116.25 22h-8.5A5.75 5.75 0 012 16.25v-8.5A5.75 5.75 0 017.75 2zm0 1.5A4.25 4.25 0 003.5 7.75v8.5A4.25 4.25 0 007.75 20.5h8.5a4.25 4.25 0 004.25-4.25v-8.5A4.25 4.25 0 0016.25 3.5h-8.5zm4.25 3.25a5.25 5.25 0 110 10.5 5.25 5.25 0 010-10.5zm0 1.5a3.75 3.75 0 100 7.5 3.75 3.75 0 000-7.5zm5.25.75a1 1 0 110 2 1 1 0 010-2z"></path></svg>
-                                                        Instagram
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="mt-4 mb-2">
-                                            <span class="block text-xs font-semibold text-gray-500 dark:text-gray-400">Co-Founder & CTO</span>
-                                        </div>
-                                        <div class="flex items-center gap-3">
-                                            <img src="Arnab-Image.jpg" alt="Arnab Mandal Profile" class="w-12 h-12 rounded-full border-2 border-indigo-500">
-                                            <div>
-                                                <h3 class="text-base font-bold text-indigo-700 dark:text-indigo-300">Arnab Mandal</h3>
-                                                <p class="text-xs text-gray-600 dark:text-gray-400">Diploma, Electrical Engineering</p>
-                                                <span class="flex items-center gap-1 text-indigo-600 dark:text-indigo-400 mt-1">
-                                                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/4e/Gmail_Icon.png" alt="Gmail" class="w-4 h-4">
-                                                    <span class="font-mono select-all text-xs">arnabmandal123123@gmail.com</span>
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <p class="mt-3 text-xs text-gray-600 dark:text-gray-400">
-                                            We build smart, secure, and user-friendly home automation solutions. Contact us for collaboration or support.
-                                        </p>
-                                    </section>
-            <!-- Feedback Form -->
-            <section>
-                <h3 class="font-semibold text-gray-700 dark:text-gray-200 mb-2">Feedback / Query</h3>
-                <form id="feedback-form" class="space-y-2">
-                    <input id="feedback-email" type="email" required placeholder="Your Email" class="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400">
-                    <textarea id="feedback-message" required placeholder="Your message..." class="w-full px-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-400"></textarea>
-                    <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2 rounded hover:bg-indigo-700 transition">Send</button>
-                </form>
-                <p id="feedback-success" class="text-green-600 text-xs mt-2 hidden">Opening email client...</p>
-            </section>
-            <!-- Logout Button -->
-            <div class="mt-auto p-4 border-t border-gray-200 dark:border-gray-700">
-                <button id="logout-btn" class="w-full text-left px-3 py-2 rounded text-gray-700 dark:text-gray-200 hover:bg-red-100 dark:hover:bg-red-800/50 flex items-center gap-2">Logout</button>
             </div>
+
+            <!-- Section 2: Feedback -->
+            <div class="accordion-item">
+                <button class="accordion-toggle" data-accordion="feedback">
+                    <span>Feedback</span>
+                    <svg class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="accordion-content" id="accordion-feedback">
+                    <div class="pt-3 pb-2">
+                        <form id="feedback-form" class="space-y-2">
+                            <input id="feedback-email" type="email" required placeholder="Your Email" class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+                            <textarea id="feedback-message" required placeholder="Your message..." class="w-full px-3 py-2 rounded border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"></textarea>
+                            <button type="submit" class="w-full bg-indigo-600 text-white font-semibold py-2 rounded hover:bg-indigo-700 transition">Send</button>
+                        </form>
+                        <p id="feedback-success" class="text-green-600 text-xs mt-2 hidden">Opening email client...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Section 3: About -->
+             <div class="accordion-item">
+                <button class="accordion-toggle" data-accordion="about">
+                    <span>About</span>
+                    <svg class="w-5 h-5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <div class="accordion-content" id="accordion-about">
+                    <div class="pt-3 pb-2 text-sm text-gray-700 dark:text-gray-300 space-y-4">
+                        <h3 class="font-bold text-base text-indigo-600 dark:text-indigo-400">About Project: Smart Home Automation System 💡</h3>
+                        <p>Welcome to the Smart Home Automation System, an innovative project dedicated to bringing convenient, web-controlled lighting and fan management into the modern home.</p>
+
+                        <h4 class="font-semibold text-indigo-600 dark:text-indigo-400">Our Mission and Implementation 🛠</h4>
+                        <p>As a two-member team of electrical engineers from Gkciet, we combined our academic expertise to design and implement a practical and cost-effective home automation solution.</p>
+                        <p>The system leverages the power of the ESP8266 Wi-Fi module as the central intelligence. This versatile, low-cost micro-controller hosts a custom-developed webpage, acting as the intuitive control interface you are currently using.</p>
+
+                        <h4 class="font-semibold text-indigo-600 dark:text-indigo-400">Core Technology 🔌</h4>
+                        <p>The real-world control of your appliances is managed through reliable Relay Modules. These modules interface directly with the ESP8266, safely enabling and disabling the electrical current to your lights and fans with a simple tap on this website.</p>
+                        <p>This integrated architecture achieves:</p>
+                        <ul class="list-disc list-inside pl-2 space-y-1">
+                            <li><strong>Remote Accessibility:</strong> Control your home environment from any device connected to your local network.</li>
+                            <li><strong>Seamless Integration:</strong> A user-friendly web interface eliminates the need for complex, proprietary apps.</li>
+                            <li><strong>Practical Engineering:</strong> A demonstration of efficient hardware-software co-design using widely available components.</li>
+                        </ul>
+
+                        <h3 class="font-bold text-base text-indigo-600 dark:text-indigo-400 pt-2">Project Team and Credits ✨</h3>
+                        <p>This project stands as a testament to practical engineering application, translating theoretical knowledge into a tangible, functional utility. It was collaboratively engineered and developed by students from Gkciet:</p>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-100 dark:bg-slate-700">
+                                        <th class="p-2 border border-slate-300 dark:border-slate-600">Name</th>
+                                        <th class="p-2 border border-slate-300 dark:border-slate-600">Academic</th>
+                                        <th class="p-2 border border-slate-300 dark:border-slate-600">Role</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-slate-200 dark:border-slate-700">
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600 font-medium">Piku Mandal</td>
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600">B.Tech (2nd Year)</td>
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600">Concept, Software & Web Design</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600 font-medium">Arnab Mandal</td>
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600">Diploma (3rd Year)</td>
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600">Hardware, Software & Web Design</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <p class="pt-2">We hope you enjoy the simplicity and convenience our Smart Home Automation System provides!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logout Button -->
+        <div class="mt-auto p-4 border-t border-gray-200 dark:border-gray-700">
+            <button id="logout-btn" class="w-full text-left px-3 py-2 rounded text-gray-700 dark:text-gray-200 hover:bg-red-100 dark:hover:bg-red-800/50 flex items-center gap-2">Logout</button>
         </div>
     </aside>
 
@@ -443,6 +504,8 @@
             </div>
         </div>
         
+        <h1 id="appliance-name" class="text-2xl sm:text-3xl font-bold section-title text-center">Smart Device Control</h1>
+
             <!-- Voice Control Section -->
             <div class="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-4 flex flex-col items-center shadow-inner">
                 <div class="w-full flex flex-col items-center">
@@ -544,7 +607,6 @@
                     </select>
                 </div>
                 <div id="log-container" class="activity-log h-40 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-xs rounded-md p-3 overflow-y-auto space-y-1"></div>
-        <!-- ...existing code... -->
             </div>
 
         </main>
@@ -578,604 +640,32 @@
     <script>
         // IIFE to encapsulate the entire application logic
         (function() {
-        // This script checks the user's system preference and applies the dark/light theme on load to prevent flashing.
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark')
-        } else {
-          document.documentElement.classList.remove('dark')
-        }
-        // --- Enhanced Activity Log Logic ---
-        const logEntries = [];
-        function getLogIcon(type) {
-            switch(type) {
-                case "on": return '<svg class="inline w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
-                case "off": return '<svg class="inline w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
-                case "timer": return '<svg class="inline w-4 h-4 text-yellow-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"></path></svg>';
-                case "voice": return '<svg class="inline w-4 h-4 text-indigo-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10v2a7 7 0 0014 0v-2"></path></svg>';
-                case "system": return '<svg class="inline w-4 h-4 text-gray-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/></svg>';
-                default: return '';
-            }
-        }
-        function renderLog() {
-            const search = document.getElementById('log-search').value.toLowerCase();
-            const filter = document.getElementById('log-filter').value;
-            const container = document.getElementById('log-container');
-            container.innerHTML = '';
-            logEntries.filter(entry => {
-                const matchesSearch = entry.text.toLowerCase().includes(search);
-                const matchesFilter = filter === 'all' || entry.type === filter;
-                return matchesSearch && matchesFilter;
-            }).forEach(entry => {
-                container.innerHTML += `<div>${getLogIcon(entry.type)}<span class="text-cyan-600 dark:text-cyan-400">[${entry.time}]</span> > ${entry.text}</div>`;
-            });
-            container.scrollTop = container.scrollHeight;
-        }
-        function addLog(logText) {
-            const timestamp = new Date().toLocaleTimeString();
-            const sanitizedText = logText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            // Determine log type
-            let type = "system";
-            if (/Turned ON|ON/.test(logText)) type = "on";
-            else if (/Turned OFF|OFF/.test(logText)) type = "off";
-            else if (/timer|Timer|set/i.test(logText)) type = "timer";
-            else if (/Voice/i.test(logText)) type = "voice";
-            logEntries.push({ time: timestamp, text: sanitizedText, type });
-            renderLog();
-        }
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('log-search').addEventListener('input', renderLog);
-            document.getElementById('log-filter').addEventListener('change', renderLog);
-        });
-
-        // --- Dashboard Overview Logic ---
-        function updateDashboardOverview() {
-            const dashboardTotalLights = document.getElementById('dashboard-total-lights');
-            const dashboardOnCount = document.getElementById('dashboard-on-count');
-            const dashboardOffCount = document.getElementById('dashboard-off-count');
-            
-            if (!dashboardTotalLights) return; // Elements might not be ready
-
-            let onCount = 0;
-            const NUM_LIGHTS = 4; // Should be derived from `appliances` array
-            for (let i = 1; i <= NUM_LIGHTS; i++) {
-                const toggle = document.getElementById(`light-toggle-${i}`);
-                if (toggle && toggle.checked) onCount++;
-            }
-            dashboardTotalLights.textContent = NUM_LIGHTS;
-            dashboardOnCount.textContent = onCount;
-            dashboardOffCount.textContent = NUM_LIGHTS - onCount;
-        }
-
-        function updateDashboardTimerStatus(onTime, offTime) {
-            const dashboardTimerStatus = document.getElementById('dashboard-timer-status');
-            if (onTime && offTime) {
-                dashboardTimerStatus.textContent = `Active`;
-                dashboardTimerStatus.classList.remove('text-gray-600', 'dark:text-gray-300');
-                dashboardTimerStatus.classList.add('text-green-600', 'dark:text-green-400');
-            } else {
-                dashboardTimerStatus.textContent = 'No Timer';
-                dashboardTimerStatus.classList.remove('text-green-600', 'dark:text-green-400');
-                dashboardTimerStatus.classList.add('text-gray-600', 'dark:text-gray-300');
-            }
-        }
-
-        function applyTheme(theme) {
-            if (theme === 'dark') {
-                document.documentElement.classList.add('dark');
-                document.documentElement.classList.remove('light');
-            } else if (theme === 'light') {
-                document.documentElement.classList.remove('dark');
-                document.documentElement.classList.add('light');
-            } else {
-                // System
-                document.documentElement.classList.remove('dark');
-                document.documentElement.classList.remove('light');
-                if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    document.documentElement.classList.add('dark');
+            // --- Enhanced Activity Log Logic ---
+            const logEntries = [];
+            function getLogIcon(type) {
+                switch(type) {
+                    case "on": return '<svg class="inline w-4 h-4 text-green-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
+                    case "off": return '<svg class="inline w-4 h-4 text-red-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+                    case "timer": return '<svg class="inline w-4 h-4 text-yellow-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6l4 2"></path></svg>';
+                    case "voice": return '<svg class="inline w-4 h-4 text-indigo-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10v2a7 7 0 0014 0v-2"></path></svg>';
+                    case "system": return '<svg class="inline w-4 h-4 text-gray-500 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/></svg>';
+                    default: return '';
                 }
             }
-            localStorage.theme = theme;
-            updateThemeButtons(theme);
-        }
-
-        function updateThemeButtons(theme) {
-            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
-            if (theme === 'dark') document.getElementById('theme-dark').classList.add('active');
-            else if (theme === 'light') document.getElementById('theme-light').classList.add('active');
-            else document.getElementById('theme-system').classList.add('active');
-        }
-
-        // Listen for system theme changes
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
-            if (localStorage.theme === 'system' || !localStorage.theme) {
-                applyTheme('system');
-            }
-        });
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Theme toggle logic
-            const theme = localStorage.theme || 'system';
-            applyTheme(theme);
-            document.getElementById('theme-light').onclick = () => applyTheme('light');
-            document.getElementById('theme-dark').onclick = () => applyTheme('dark');
-            document.getElementById('theme-system').onclick = () => applyTheme('system');
-
-            // --- Authentication Logic ---
-            const authContainer = document.getElementById('auth-container');
-            const mainAppContainer = document.getElementById('main-app');
-            const mainControlsHeader = document.getElementById('main-controls-header');
-            const logoutBtnDrawer = document.getElementById('logout-btn');
-            const logoutBtnMain = document.getElementById('logout-btn-main');
-            const passwordInput = document.getElementById('login-password');
-            const togglePasswordBtn = document.getElementById('toggle-password');
-            const eyeOpen = document.getElementById('eye-open');
-            const eyeClosed = document.getElementById('eye-closed');
-            const loginBtn = document.getElementById('login-btn');
-            const loginBtnText = document.getElementById('login-btn-text');
-            const loginSpinner = document.getElementById('login-spinner');
-
-            window.handleLogin = () => {
-                // --- FIXED CREDENTIALS ---
-                const FIXED_EMAIL = "sma@gmail.com";
-                const FIXED_PASSWORD = "sma0006Q";
-
-                loginBtnText.classList.add('hidden');
-                loginSpinner.classList.remove('hidden');
-                loginBtn.disabled = true;
-
-                const email = document.getElementById('login-email').value;
-                const password = document.getElementById('login-password').value;
-
-                // Simulate network delay for better UX
-                setTimeout(() => {
-                    if (email === FIXED_EMAIL && password === FIXED_PASSWORD) {
-                        sessionStorage.setItem('loggedInUser', email);
-                        showMainApp();
-                    } else {
-                        showToast('Invalid credentials.', 'error');
-                    }
-                    loginBtnText.classList.remove('hidden');
-                    loginSpinner.classList.add('hidden');
-                    loginBtn.disabled = false;
-                }, 500);
-            };
-
-            const showMainApp = () => {
-                authContainer.classList.add('hidden');
-                mainAppContainer.classList.remove('hidden');
-                mainControlsHeader.classList.remove('hidden');
-                // Connect to MQTT only after successful login
-                connectMqtt();
-            };
-
-            const showAuth = () => {
-                sessionStorage.removeItem('loggedInUser');
-                authContainer.classList.remove('hidden');
-                mainAppContainer.classList.add('hidden');
-                mainControlsHeader.classList.add('hidden');
-                if (client && client.isConnected()) {
-                    client.disconnect();
-                }
-            };
-
-            // Attach logout function to both buttons
-            logoutBtnDrawer.onclick = showAuth;
-            logoutBtnMain.onclick = showAuth;
-
-            // Show/Hide Password Logic
-            togglePasswordBtn.addEventListener('click', () => {
-                const isPassword = passwordInput.type === 'password';
-                passwordInput.type = isPassword ? 'text' : 'password';
-                eyeOpen.classList.toggle('hidden', !isPassword);
-                eyeClosed.classList.toggle('hidden', isPassword);
-            });
-
-            // Reset login button state on page load
-            loginBtnText.classList.remove('hidden');
-            loginSpinner.classList.add('hidden');
-            loginBtn.disabled = false;
-
-            const NUM_LIGHTS = 4;
-            const lightCardContainer = document.getElementById('light-card-container');
-            const turnAllOnBtn = document.getElementById('turn-all-on');
-            const turnAllOffBtn = document.getElementById('turn-all-off');
-
-            // Add default welcome entry to activity log
-            if (typeof addLog === 'function') {
-                addLog("Welcome! Activity log initialized.");
-            }
-            // --- Quick Action Button Logic ---
-            turnAllOnBtn.addEventListener('click', () => {
-                for (let i = 1; i <= NUM_LIGHTS; i++) {
-                    publishMessage(`homeautomation/project/light/${i}/set`, "ON", false);
-                }
-                addLog("Turned ON all lights via quick action.");
-                showToast("All lights turned ON", "success");
-            });
-            turnAllOffBtn.addEventListener('click', () => {
-                for (let i = 1; i <= NUM_LIGHTS; i++) {
-                    publishMessage(`homeautomation/project/light/${i}/set`, "OFF", false);
-                }
-                addLog("Turned OFF all lights via quick action.");
-                showToast("All lights turned OFF", "error");
-            });
-
-            // --- Dynamically Create Light Cards ---
-            // Appliance definitions for grouping and icons
-            const ICONS = {
-                light: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 21a2 2 0 01-2-2V17a2 2 0 012-2h6a2 2 0 012 2v2a2 2 0 01-2 2H9zM9 15V9a3 3 0 013-3h0a3 3 0 013 3v6M12 6V3m-4 3h8"></path></svg>',
-                fan: '<svg class="w-16 h-16 mx-auto appliance-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5.5A6.5 6.5 0 1 0 18.5 12H12V5.5z" /><path d="M12 18.5A6.5 6.5 0 1 0 5.5 12H12v6.5z" /><path d="M5.5 12A6.5 6.5 0 1 0 12 5.5V12H5.5z" /></svg>',
-                other: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 20a1 1 0 01-1-1v-8H7a1 1 0 01-1-1V5a1 1 0 011-1h10a1 1 0 011 1v5a1 1 0 01-1 1h-3v8a1 1 0 01-1 1h-2z"></path></svg>'
-            };
-            const appliances = [
-                { id: 1, name: 'Ceiling Light', group: 'living', type: 'light' },
-                { id: 2, name: 'Table Lamp', group: 'living', type: 'light' },
-                { id: 3, name: 'Bedside Lamp', group: 'bedroom', type: 'light' },
-                { id: 4, name: 'Fan', group: 'bedroom', type: 'fan' }
-            ];
-
-            appliances.forEach(appliance => {
-                const cardHTML = `
-                <div id="card-${appliance.id}" class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 text-center transition-all duration-300">
-                    <div id="name-container-${appliance.id}" class="flex items-center justify-center gap-2 mb-2">
-                         <h2 id="appliance-name-${appliance.id}" class="text-lg font-bold text-gray-800 dark:text-gray-100">${appliance.name}</h2>
-                         <button class="edit-btn text-gray-400 hover:text-indigo-500" data-light-num="${appliance.id}">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
-                         </button>
-                    </div>
-                    <div class="mb-4 relative flex items-center justify-center">
-                        <span id="status-badge-${appliance.id}" class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-300">Unknown</span>
-                        <span id="icon-container-${appliance.id}" data-type="${appliance.type}">${ICONS[appliance.type] || ICONS['other']}</span>
-                    </div>
-                    <label for="light-toggle-${appliance.id}" class="toggle-switch">
-                        <input type="checkbox" id="light-toggle-${appliance.id}" data-light-num="${appliance.id}" class="toggle-checkbox"/>
-                        <span class="toggle-track"></span>
-                        <span class="toggle-thumb"></span>
-                    </label>
-
-                    <!-- Individual Timer Section -->
-                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
-                        <div class="flex items-center justify-center gap-2">
-                            <input type="time" id="timer-time-${appliance.id}" class="input w-28 text-sm timer-input" />
-                            <select id="timer-action-${appliance.id}" class="input text-sm timer-input">
-                                <option value="ON">ON</option>
-                                <option value="OFF">OFF</option>
-                            </select>
-                            <button class="set-individual-timer-btn btn text-sm" data-light-num="${appliance.id}">Set</button>
-                        </div>
-                        <div id="timer-list-${appliance.id}" class="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1"></div>
-                    </div>
-                </div>`;
-                if (appliance.group === 'living') {
-                    document.getElementById('living-room-cards').insertAdjacentHTML('beforeend', cardHTML);
-                } else {
-                    document.getElementById('bedroom-cards').insertAdjacentHTML('beforeend', cardHTML);
-                }
-            });
-
-            // Initial dashboard update after creating cards
-            updateDashboardOverview();
-
-            
-            // --- Individual Timer Logic ---
-            let individualTimers = {}; // Format: { lightId: [{id, time, action, element}, ...], ... }
-
-            function setIndividualTimer(lightNum) {
-                const timeInput = document.getElementById(`timer-time-${lightNum}`);
-                const actionSelect = document.getElementById(`timer-action-${lightNum}`);
-                const time = timeInput.value;
-                const action = actionSelect.value;
-
-                if (!time) {
-                    showToast("Please select a time for the timer.", "warning");
-                    return;
-                }
-
-                if (!individualTimers[lightNum]) {
-                    individualTimers[lightNum] = [];
-                }
-
-                const timerId = `timer_${lightNum}_${new Date().getTime()}`;
-                individualTimers[lightNum].push({ id: timerId, time, action });
-                updateTimerList(lightNum);
-                showToast(`Timer set for ${document.getElementById(`appliance-name-${lightNum}`).textContent} to turn ${action} at ${time}.`, "info");
-                addLog(`Timer set for ${document.getElementById(`appliance-name-${lightNum}`).textContent} to turn ${action} at ${time}.`);
-                timeInput.value = "";
-            }
-
-            function removeIndividualTimer(lightNum, timerId) {
-                if (individualTimers[lightNum]) {
-                    individualTimers[lightNum] = individualTimers[lightNum].filter(timer => timer.id !== timerId);
-                    updateTimerList(lightNum);
-                    showToast("Timer removed.", "info");
-                }
-            }
-
-            function updateTimerList(lightNum) {
-                const timerListEl = document.getElementById(`timer-list-${lightNum}`);
-                timerListEl.innerHTML = '';
-                if (individualTimers[lightNum] && individualTimers[lightNum].length > 0) {
-                    individualTimers[lightNum].forEach(timer => {
-                        const timerEl = document.createElement('div');
-                        timerEl.className = 'flex items-center justify-between bg-indigo-100 dark:bg-indigo-800/50 p-1 rounded';
-                        timerEl.innerHTML = `
-                            <span>${timer.action} at ${new Date('1970-01-01T' + timer.time).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true})}</span>
-                            <button class="remove-individual-timer-btn text-red-500 hover:text-red-400" data-light-num="${lightNum}" data-timer-id="${timer.id}">&times;</button>
-                        `;
-                        timerListEl.appendChild(timerEl);
-                    });
-                } else {
-                    timerListEl.innerHTML = '<p class="text-gray-500">No active timers.</p>';
-                }
-            }
-
-            function checkTimers() {
-                const now = new Date();
-                const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
-
-                for (const lightNum in individualTimers) {
-                    if (individualTimers[lightNum].length > 0) {
-                        individualTimers[lightNum].forEach(timer => {
-                            if (timer.time === currentTime) {
-                                const applianceName = document.getElementById(`appliance-name-${lightNum}`).textContent;
-                                publishMessage(`homeautomation/project/light/${lightNum}/set`, timer.action, false);
-                                addLog(`Timer executed: Turned ${timer.action} ${applianceName}.`);
-                                showToast(`Timer: Turned ${timer.action} ${applianceName}.`, "success");
-                                // Remove timer after execution
-                                removeIndividualTimer(lightNum, timer.id);
-                            }
-                        });
-                    }
-                }
-            }
-
-            setInterval(checkTimers, 1000); // Check every second
-
-            // --- Toast Notification Logic ---
-            function showToast(message, type = 'info') {
-                const container = document.getElementById('toast-container');
-                const toast = document.createElement('div');
-                const colors = {
-                    info: 'bg-blue-500',
-                    success: 'bg-green-500',
-                    warning: 'bg-yellow-500',
-                    error: 'bg-red-500'
-                };
-                toast.className = `pointer-events-auto text-white text-sm rounded-lg shadow-lg px-4 py-2 transform transition-all duration-300 ease-in-out ${colors[type]} translate-x-full opacity-0`;
-                toast.textContent = message;
-                container.appendChild(toast);
-
-                // Animate in
-                setTimeout(() => {
-                    toast.classList.remove('translate-x-full', 'opacity-0');
-                }, 100);
-
-                // Animate out and remove
-                setTimeout(() => {
-                    toast.classList.add('opacity-0', 'translate-x-full');
-                    setTimeout(() => toast.remove(), 300);
-                }, 4000);
-            }
-
-            // --- MQTT Configuration ---
-            const brokerHost = "test.mosquitto.org";
-            const brokerPort = 8081;
-            const clientId = "WebAppClient_" + new Date().getTime();
-            // --- TOPICS FOR SYNCING STATE ---
-            const light_name_topic_wildcard = "homeautomation/project/light/+/name";
-            const light_type_topic_wildcard = "homeautomation/project/light/+/type";
-            const room_name_topic_wildcard = "homeautomation/project/room/+/name";
-            const light_config_timer_topic = "homeautomation/project/config/timer";
-            const esp_status_topic = "homeautomation/project/esp/status";
-            // --- TOPICS FOR FUNCTIONALITY ---
-            const light_status_topic_wildcard = "homeautomation/project/light/+/status";
-            const light_log_topic = "homeautomation/project/light/log";
-            const light_timer_set_topic = "homeautomation/project/light/setTimer";
-            const light_timer_clear_topic = "homeautomation/project/light/clearTimer";
-
-            // --- UI Elements ---
-            const connectionStatusEl = document.getElementById('connection-status');
-            const espConnectionStatusEl = document.getElementById('esp-connection-status');
-            const logContainerEl = document.getElementById('log-container');
-            const setTimerBtn = document.getElementById('set-timer-btn');
-            const onTimeInput = document.getElementById('on-time');
-            const offTimeInput = document.getElementById('off-time');
-            const activeTimerDisplay = document.getElementById('active-timer-display');
-            const activeTimerText = document.getElementById('active-timer-text');
-            const clearTimerBtn = document.getElementById('clear-timer-btn');
-            const drawer = document.getElementById('drawer');
-            const drawerBackdrop = document.getElementById('drawer-backdrop');
-            const drawerOpen = document.getElementById('drawer-open');
-            const drawerClose = document.getElementById('drawer-close');
-            const voiceBtn = document.getElementById('voice-btn');
-            const voiceBtnText = document.getElementById('voice-btn-text');
-            const voiceStatus = document.getElementById('voice-status');
-            const instructionsToggle = document.getElementById('instructions-toggle');
-            const voiceInstructions = document.getElementById('voice-instructions');
-            const instructionChevron = document.getElementById('instruction-chevron');
-
-            // --- MQTT Client Setup ---
-            const client = new Paho.Client(brokerHost, brokerPort, clientId);
-            client.onConnectionLost = onConnectionLost;
-            client.onMessageArrived = onMessageArrived;
-            client.connect({
-                timeout: 3,
-                useSSL: true,
-                onSuccess: onConnect,
-                onFailure: onFailure,
-            });
-
-            function connectMqtt() {
-                if (client.isConnected()) {
-                    console.log("Already connected to MQTT.");
-                    return;
-                }
-                client.onConnectionLost = onConnectionLost;
-                client.onMessageArrived = onMessageArrived;
-                client.connect({
-                    timeout: 3,
-                    useSSL: true,
-                    onSuccess: onConnect,
-                    onFailure: onFailure,
+            function renderLog() {
+                const search = document.getElementById('log-search').value.toLowerCase();
+                const filter = document.getElementById('log-filter').value;
+                const container = document.getElementById('log-container');
+                container.innerHTML = '';
+                logEntries.filter(entry => {
+                    const matchesSearch = entry.text.toLowerCase().includes(search);
+                    const matchesFilter = filter === 'all' || entry.type === filter;
+                    return matchesSearch && matchesFilter;
+                }).forEach(entry => {
+                    container.innerHTML += `<div>${getLogIcon(entry.type)}<span class="text-cyan-600 dark:text-cyan-400">[${entry.time}]</span> > ${entry.text}</div>`;
                 });
+                container.scrollTop = container.scrollHeight;
             }
-            
-            // --- MQTT Functions ---
-            function onConnect() {
-                const statusDot = connectionStatusEl.querySelector('div');
-                const statusText = connectionStatusEl.querySelector('p');
-                statusDot.classList.replace('bg-red-500', 'bg-green-500');
-                statusDot.classList.remove('animate-pulse');
-                statusText.classList.replace('text-red-500', 'text-green-500');
-                // Subscribe to all functional topics
-                client.subscribe(light_status_topic_wildcard);
-                client.subscribe(light_log_topic);
-                // --- SUBSCRIBE TO STATE TOPICS TO SYNC ---
-                client.subscribe(light_name_topic_wildcard);
-                client.subscribe(light_type_topic_wildcard);
-                client.subscribe(room_name_topic_wildcard);
-                client.subscribe(light_config_timer_topic);
-                client.subscribe(esp_status_topic);
-
-                addLog("Web UI connected. Requesting initial status...");
-                for (let i = 1; i <= NUM_LIGHTS; i++) {
-                    publishMessage(`homeautomation/project/light/${i}/getStatus`, "GET", false); // Don't retain status requests
-                }
-                updateDashboardOverview();
-            }
-
-            function onFailure(message) {
-                const statusText = connectionStatusEl.querySelector('p');
-                statusText.textContent = "UI Failed";
-                console.error("UI Connection failed: " + message.errorMessage);
-            }
-
-            function onConnectionLost(responseObject) {
-                if (responseObject.errorCode !== 0) {
-                    const statusDot = connectionStatusEl.querySelector('div');
-                    const statusText = connectionStatusEl.querySelector('p');
-                    statusDot.classList.replace('bg-green-500', 'bg-red-500');
-                    statusDot.classList.add('animate-pulse');
-                    statusText.classList.replace('text-green-500', 'text-red-500');
-                    statusText.textContent = "UI Lost";
-                    console.error("UI Connection lost: " + responseObject.errorMessage);
-                }
-            }
-
-            function onMessageArrived(message) {
-                const topic = message.destinationName;
-                const payload = message.payloadString;
-
-                if (topic === light_log_topic) {
-                    addLog(payload);
-                } 
-                // Handle status updates
-                else if (topic.includes("/status")) {
-                    const topicParts = topic.split('/');
-                    const lightNumber = parseInt(topicParts[3]);
-                    if (!isNaN(lightNumber)) updateLightUI(lightNumber, payload);
-                }
-                // --- HANDLE INCOMING STATE SYNC MESSAGES ---
-                else if (topic.startsWith("homeautomation/project/room/")) {
-                    const topicParts = topic.split('/');
-                    const room = topicParts[3];
-                    const nameEl = document.getElementById(`room-name-${room}`);
-                    if (nameEl && payload) {
-                        nameEl.textContent = payload;
-                    }
-                }
-                else if (topic.includes("/name")) {
-                    const topicParts = topic.split('/');
-                    const lightNumber = parseInt(topicParts[3]);
-                    if (!isNaN(lightNumber) && payload) {
-                        const appliance = appliances.find(a => a.id == lightNumber);
-                        if(appliance) appliance.name = payload;
-                        document.getElementById(`appliance-name-${lightNumber}`).textContent = payload;
-                    }
-                }
-                else if (topic.includes("/type")) {
-                    const topicParts = topic.split('/');
-                    const lightNumber = parseInt(topicParts[3]);
-                    if (!isNaN(lightNumber) && payload) {
-                        const appliance = appliances.find(a => a.id == lightNumber);
-                        if (appliance) {
-                            appliance.type = payload;
-                            const iconContainer = document.getElementById(`icon-container-${lightNumber}`);
-                            iconContainer.innerHTML = ICONS[payload] || ICONS['other'];
-                            iconContainer.dataset.type = payload;
-                        }
-                    }
-                }
-                else if (topic === light_config_timer_topic) {
-                    if (payload) { // If payload is not empty, set timer
-                        const { on, off } = JSON.parse(payload);
-                        onTimeInput.value = on;
-                        offTimeInput.value = off;
-                        displayActiveTimer(on, off);
-                    } else { // If payload is empty, clear timer
-                        hideActiveTimer();
-                    }
-                }
-                else if (topic === esp_status_topic) {
-                    const espStatusDot = espConnectionStatusEl.querySelector('div');
-                    const espStatusText = espConnectionStatusEl.querySelector('p');
-                    if (payload === "online") {
-                        espStatusDot.classList.remove('bg-gray-400', 'bg-red-500');
-                        espStatusDot.classList.add('bg-green-500');
-                        espStatusText.classList.remove('text-gray-500', 'text-red-500');
-                        espStatusText.classList.add('text-green-500');
-                    } else { // "offline" or any other status
-                        espStatusDot.classList.remove('bg-gray-400', 'bg-green-500');
-                        espStatusDot.classList.add('bg-red-500');
-                        espStatusText.classList.remove('text-gray-500', 'text-green-500');
-                        espStatusText.classList.add('text-red-500');
-                    }
-                }
-            }
-
-            function publishMessage(topic, payload, retained = false) {
-                if (!client.isConnected()) {
-                    addLog("Cannot publish. Not connected to broker.");
-                    return;
-                }
-                const message = new Paho.Message(payload);
-                message.destinationName = topic;
-                message.retained = retained; // Set the retained flag
-                client.send(message);
-            }
-
-            // --- UI Logic ---
-            function updateLightUI(lightNumber, status) {
-                const lightToggleEl = document.getElementById(`light-toggle-${lightNumber}`);
-                const statusBadgeEl = document.getElementById(`status-badge-${lightNumber}`);
-                const iconContainerEl = document.getElementById(`icon-container-${lightNumber}`);
-                if (!lightToggleEl || !statusBadgeEl || !iconContainerEl) return;
-                const isON = (status === "ON");
-                lightToggleEl.checked = isON;
-                // Update badge
-                if (isON) {
-                    statusBadgeEl.textContent = "ON";
-                    statusBadgeEl.classList.remove("bg-gray-300", "dark:bg-gray-700", "text-gray-700", "dark:text-gray-200");
-                    statusBadgeEl.classList.add("bg-green-400", "dark:bg-green-600", "text-white");
-                } else if (status === "OFF") {
-                    statusBadgeEl.textContent = "OFF";
-                    statusBadgeEl.classList.remove("bg-green-400", "dark:bg-green-600", "text-white");
-                    statusBadgeEl.classList.add("bg-red-400", "dark:bg-red-600", "text-white");
-                } else {
-                    statusBadgeEl.textContent = "Unknown";
-                    statusBadgeEl.classList.remove("bg-green-400", "dark:bg-green-600", "bg-red-400", "dark:bg-red-600", "text-white");
-                    statusBadgeEl.classList.add("bg-gray-300", "dark:bg-gray-700", "text-gray-700", "dark:text-gray-200");
-                }
-                // Animate icon for ON state
-                if (isON) {
-                    iconContainerEl.classList.add("icon-on");
-                } else {
-                    iconContainerEl.classList.remove("icon-on");
-                }
-                // Update the main dashboard overview whenever a light's UI changes
-                updateDashboardOverview();
-            }
-
             function addLog(logText) {
                 const timestamp = new Date().toLocaleTimeString();
                 const sanitizedText = logText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -1188,309 +678,890 @@
                 logEntries.push({ time: timestamp, text: sanitizedText, type });
                 renderLog();
             }
+            document.addEventListener('DOMContentLoaded', () => {
+                document.getElementById('log-search').addEventListener('input', renderLog);
+                document.getElementById('log-filter').addEventListener('change', renderLog);
+            });
 
-            // --- Timer Logic ---
-            function displayActiveTimer(onTime, offTime) {
-                const formatTime = (time) => new Date('1970-01-01T' + time).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true});
-                activeTimerText.textContent = `ON: ${formatTime(onTime)} - OFF: ${formatTime(offTime)}`;
-                activeTimerDisplay.classList.remove('hidden');
+            // --- Dashboard Overview Logic ---
+            function updateDashboardOverview() {
+                const dashboardTotalLights = document.getElementById('dashboard-total-lights');
+                const dashboardOnCount = document.getElementById('dashboard-on-count');
+                const dashboardOffCount = document.getElementById('dashboard-off-count');
+                
+                if (!dashboardTotalLights) return; // Elements might not be ready
+
+                let onCount = 0;
+                const NUM_LIGHTS = 4; // Should be derived from `appliances` array
+                for (let i = 1; i <= NUM_LIGHTS; i++) {
+                    const toggle = document.getElementById(`light-toggle-${i}`);
+                    if (toggle && toggle.checked) onCount++;
+                }
+                dashboardTotalLights.textContent = NUM_LIGHTS;
+                dashboardOnCount.textContent = onCount;
+                dashboardOffCount.textContent = NUM_LIGHTS - onCount;
             }
 
-            function hideActiveTimer() {
-                activeTimerDisplay.classList.add('hidden');
-                onTimeInput.value = '';
-                offTimeInput.value = '';
-            }
-             
-            // --- Speech Synthesis ---
-            function speak(text) {
-                if ('speechSynthesis' in window) {
-                    const utter = new SpeechSynthesisUtterance(text);
-                    utter.lang = 'en-US';
-                    window.speechSynthesis.speak(utter);
+            function updateDashboardTimerStatus(onTime, offTime) {
+                const dashboardTimerStatus = document.getElementById('dashboard-timer-status');
+                if (onTime && offTime) {
+                    dashboardTimerStatus.textContent = `Active`;
+                    dashboardTimerStatus.classList.remove('text-gray-600', 'dark:text-gray-300');
+                    dashboardTimerStatus.classList.add('text-green-600', 'dark:text-green-400');
+                } else {
+                    dashboardTimerStatus.textContent = 'No Timer';
+                    dashboardTimerStatus.classList.remove('text-green-600', 'dark:text-green-400');
+                    dashboardTimerStatus.classList.add('text-gray-600', 'dark:text-gray-300');
                 }
             }
 
-            // --- Voice Control Logic ---
-            let recognition, recognizing = false;
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (SpeechRecognition) {
-                recognition = new SpeechRecognition();
-                recognition.continuous = false;
-                recognition.lang = 'en-US';
-                recognition.interimResults = false;
-                recognition.maxAlternatives = 1;
+            function applyTheme(theme) {
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                } else if (theme === 'light') {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.classList.add('light');
+                } else {
+                    // System
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.classList.remove('light');
+                    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                        document.documentElement.classList.add('dark');
+                    }
+                }
+                localStorage.theme = theme;
+                updateThemeButtons(theme);
+            }
 
-                recognition.onstart = () => {
-                    recognizing = true;
-                    voiceBtnText.textContent = "Listening...";
-                    voiceStatus.textContent = "Say a command...";
+            function updateThemeButtons(theme) {
+                document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+                if (theme === 'dark') document.getElementById('theme-dark').classList.add('active');
+                else if (theme === 'light') document.getElementById('theme-light').classList.add('active');
+                else document.getElementById('theme-system').classList.add('active');
+            }
+
+            // Listen for system theme changes
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                if (localStorage.theme === 'system' || !localStorage.theme) {
+                    applyTheme('system');
+                }
+            });
+
+            document.addEventListener('DOMContentLoaded', () => {
+                // Theme toggle logic
+                const theme = localStorage.theme || 'system';
+                applyTheme(theme);
+                document.getElementById('theme-light').onclick = () => applyTheme('light');
+                document.getElementById('theme-dark').onclick = () => applyTheme('dark');
+                document.getElementById('theme-system').onclick = () => applyTheme('system');
+
+                // --- Authentication Logic ---
+                const authContainer = document.getElementById('auth-container');
+                const mainAppContainer = document.getElementById('main-app');
+                const mainControlsHeader = document.getElementById('main-controls-header');
+                const logoutBtnDrawer = document.getElementById('logout-btn');
+                const logoutBtnMain = document.getElementById('logout-btn-main');
+                const passwordInput = document.getElementById('login-password');
+                const togglePasswordBtn = document.getElementById('toggle-password');
+                const eyeOpen = document.getElementById('eye-open');
+                const eyeClosed = document.getElementById('eye-closed');
+                const loginBtn = document.getElementById('login-btn');
+                const loginBtnText = document.getElementById('login-btn-text');
+                const loginSpinner = document.getElementById('login-spinner');
+
+                window.handleLogin = () => {
+                    // --- FIXED CREDENTIALS ---
+                    const FIXED_EMAIL = "sma@gmail.com";
+                    const FIXED_PASSWORD = "sma0006Q";
+
+                    loginBtnText.classList.add('hidden');
+                    loginSpinner.classList.remove('hidden');
+                    loginBtn.disabled = true;
+
+                    const email = document.getElementById('login-email').value;
+                    const password = document.getElementById('login-password').value;
+
+                    // Simulate network delay for better UX
+                    setTimeout(() => {
+                        if (email === FIXED_EMAIL && password === FIXED_PASSWORD) {
+                            sessionStorage.setItem('loggedInUser', email);
+                            showMainApp();
+                        } else {
+                            showToast('Invalid credentials.', 'error');
+                        }
+                        loginBtnText.classList.remove('hidden');
+                        loginSpinner.classList.add('hidden');
+                        loginBtn.disabled = false;
+                    }, 500);
                 };
 
-                recognition.onerror = (event) => {
-                    voiceStatus.textContent = "Error: " + event.error;
+                const showMainApp = () => {
+                    authContainer.classList.add('hidden');
+                    mainAppContainer.classList.remove('hidden');
+                    mainControlsHeader.classList.remove('hidden');
+                    // Connect to MQTT only after successful login
+                    connectMqtt();
                 };
 
-                recognition.onend = () => {
-                    recognizing = false;
-                    voiceBtnText.textContent = "Start Listening";
-                    setTimeout(() => { if (!recognizing) voiceStatus.textContent = "" }, 2000);
+                const showAuth = () => {
+                    sessionStorage.removeItem('loggedInUser');
+                    authContainer.classList.remove('hidden');
+                    mainAppContainer.classList.add('hidden');
+                    mainControlsHeader.classList.add('hidden');
+                    if (client && client.isConnected()) {
+                        client.disconnect();
+                    }
                 };
 
-                recognition.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript.trim().toLowerCase();
-                    voiceStatus.textContent = `Heard: "${transcript}"`;
-                    
-                    if (transcript.includes("turn on all lights")) {
-                        for (let i = 1; i <= NUM_LIGHTS; i++) publishMessage(`homeautomation/project/light/${i}/set`, "ON");
-                        addLog("Voice: Turn ON all lights");
-                        speak("Turning on all lights");
-                        return;
-                    } 
-                    if (transcript.includes("turn off all lights")) {
-                        for (let i = 1; i <= NUM_LIGHTS; i++) publishMessage(`homeautomation/project/light/${i}/set`, "OFF");
-                        addLog("Voice: Turn OFF all lights");
-                        speak("Turning off all lights");
+                // Attach logout function to both buttons
+                logoutBtnDrawer.onclick = showAuth;
+                logoutBtnMain.onclick = showAuth;
+
+                // Show/Hide Password Logic
+                togglePasswordBtn.addEventListener('click', () => {
+                    const isPassword = passwordInput.type === 'password';
+                    passwordInput.type = isPassword ? 'text' : 'password';
+                    eyeOpen.classList.toggle('hidden', !isPassword);
+                    eyeClosed.classList.toggle('hidden', isPassword);
+                });
+
+                // Reset login button state on page load
+                loginBtnText.classList.remove('hidden');
+                loginSpinner.classList.add('hidden');
+                loginBtn.disabled = false;
+
+                const NUM_LIGHTS = 4;
+                const lightCardContainer = document.getElementById('light-card-container');
+                const turnAllOnBtn = document.getElementById('turn-all-on');
+                const turnAllOffBtn = document.getElementById('turn-all-off');
+
+                // Add default welcome entry to activity log
+                if (typeof addLog === 'function') {
+                    addLog("Welcome! Activity log initialized.");
+                }
+                // --- Quick Action Button Logic ---
+                turnAllOnBtn.addEventListener('click', () => {
+                    for (let i = 1; i <= NUM_LIGHTS; i++) {
+                        publishMessage(`homeautomation/project/light/${i}/set`, "ON", false);
+                    }
+                    addLog("Turned ON all lights via quick action.");
+                    showToast("All lights turned ON", "success");
+                });
+                turnAllOffBtn.addEventListener('click', () => {
+                    for (let i = 1; i <= NUM_LIGHTS; i++) {
+                        publishMessage(`homeautomation/project/light/${i}/set`, "OFF", false);
+                    }
+                    addLog("Turned OFF all lights via quick action.");
+                    showToast("All lights turned OFF", "error");
+                });
+
+                // --- Dynamically Create Light Cards ---
+                // Appliance definitions for grouping and icons
+                const ICONS = {
+                    light: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 21a2 2 0 01-2-2V17a2 2 0 012-2h6a2 2 0 012 2v2a2 2 0 01-2 2H9zM9 15V9a3 3 0 013-3h0a3 3 0 013 3v6M12 6V3m-4 3h8"></path></svg>',
+                    fan: '<svg class="w-16 h-16 mx-auto appliance-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5.5A6.5 6.5 0 1 0 18.5 12H12V5.5z" /><path d="M12 18.5A6.5 6.5 0 1 0 5.5 12H12v6.5z" /><path d="M5.5 12A6.5 6.5 0 1 0 12 5.5V12H5.5z" /></svg>',
+                    other: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 20a1 1 0 01-1-1v-8H7a1 1 0 01-1-1V5a1 1 0 011-1h10a1 1 0 011 1v5a1 1 0 01-1 1h-3v8a1 1 0 01-1 1h-2z"></path></svg>'
+                };
+                const appliances = [
+                    { id: 1, name: 'Ceiling Light', group: 'living', type: 'light' },
+                    { id: 2, name: 'Table Lamp', group: 'living', type: 'light' },
+                    { id: 3, name: 'Bedside Lamp', group: 'bedroom', type: 'light' },
+                    { id: 4, name: 'Fan', group: 'bedroom', type: 'fan' }
+                ];
+
+                appliances.forEach(appliance => {
+                    const cardHTML = `
+                    <div id="card-${appliance.id}" class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 text-center transition-all duration-300">
+                        <div id="name-container-${appliance.id}" class="flex items-center justify-center gap-2 mb-2">
+                             <h2 id="appliance-name-${appliance.id}" class="text-lg font-bold text-gray-800 dark:text-gray-100">${appliance.name}</h2>
+                             <button class="edit-btn text-gray-400 hover:text-indigo-500" data-light-num="${appliance.id}">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z"></path></svg>
+                             </button>
+                        </div>
+                        <div class="mb-4 relative flex items-center justify-center">
+                            <span id="status-badge-${appliance.id}" class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors duration-300">Unknown</span>
+                            <span id="icon-container-${appliance.id}" data-type="${appliance.type}">${ICONS[appliance.type] || ICONS['other']}</span>
+                        </div>
+                        <label for="light-toggle-${appliance.id}" class="toggle-switch">
+                            <input type="checkbox" id="light-toggle-${appliance.id}" data-light-num="${appliance.id}" class="toggle-checkbox"/>
+                            <span class="toggle-track"></span>
+                            <span class="toggle-thumb"></span>
+                        </label>
+
+                        <!-- Individual Timer Section -->
+                        <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                            <div class="flex items-center justify-center gap-2">
+                                <input type="time" id="timer-time-${appliance.id}" class="input w-28 text-sm timer-input" />
+                                <select id="timer-action-${appliance.id}" class="input text-sm timer-input">
+                                    <option value="ON">ON</option>
+                                    <option value="OFF">OFF</option>
+                                </select>
+                                <button class="set-individual-timer-btn btn text-sm" data-light-num="${appliance.id}">Set</button>
+                            </div>
+                            <div id="timer-list-${appliance.id}" class="mt-2 text-xs text-gray-600 dark:text-gray-400 space-y-1"></div>
+                        </div>
+                    </div>`;
+                    if (appliance.group === 'living') {
+                        document.getElementById('living-room-cards').insertAdjacentHTML('beforeend', cardHTML);
+                    } else {
+                        document.getElementById('bedroom-cards').insertAdjacentHTML('beforeend', cardHTML);
+                    }
+                });
+
+                // Initial dashboard update after creating cards
+                updateDashboardOverview();
+
+                
+                // --- Individual Timer Logic ---
+                let individualTimers = {}; // Format: { lightId: [{id, time, action, element}, ...], ... }
+
+                function setIndividualTimer(lightNum) {
+                    const timeInput = document.getElementById(`timer-time-${lightNum}`);
+                    const actionSelect = document.getElementById(`timer-action-${lightNum}`);
+                    const time = timeInput.value;
+                    const action = actionSelect.value;
+
+                    if (!time) {
+                        showToast("Please select a time for the timer.", "warning");
                         return;
                     }
 
-                    const stateMatch = transcript.match(/turn (on|off)/);
-                    if (stateMatch) {
-                        const state = stateMatch[1]; // "on" or "off"
-                        for (let i = 1; i <= NUM_LIGHTS; i++) {
-                            const customName = document.getElementById(`appliance-name-${i}`).textContent.toLowerCase();
-                            const defaultName = `light ${i}`;
-                            if (transcript.includes(customName) || transcript.includes(defaultName)) {
-                                publishMessage(`homeautomation/project/light/${i}/set`, state.toUpperCase());
-                                addLog(`Voice: Turn ${state.toUpperCase()} ${customName}`);
-                                speak(`Turning ${state} ${customName}`);
-                                return; 
+                    if (!individualTimers[lightNum]) {
+                        individualTimers[lightNum] = [];
+                    }
+
+                    const timerId = `timer_${lightNum}_${new Date().getTime()}`;
+                    individualTimers[lightNum].push({ id: timerId, time, action });
+                    updateTimerList(lightNum);
+                    showToast(`Timer set for ${document.getElementById(`appliance-name-${lightNum}`).textContent} to turn ${action} at ${time}.`, "info");
+                    addLog(`Timer set for ${document.getElementById(`appliance-name-${lightNum}`).textContent} to turn ${action} at ${time}.`);
+                    timeInput.value = "";
+                }
+
+                function removeIndividualTimer(lightNum, timerId) {
+                    if (individualTimers[lightNum]) {
+                        individualTimers[lightNum] = individualTimers[lightNum].filter(timer => timer.id !== timerId);
+                        updateTimerList(lightNum);
+                        showToast("Timer removed.", "info");
+                    }
+                }
+
+                function updateTimerList(lightNum) {
+                    const timerListEl = document.getElementById(`timer-list-${lightNum}`);
+                    timerListEl.innerHTML = '';
+                    if (individualTimers[lightNum] && individualTimers[lightNum].length > 0) {
+                        individualTimers[lightNum].forEach(timer => {
+                            const timerEl = document.createElement('div');
+                            timerEl.className = 'flex items-center justify-between bg-indigo-100 dark:bg-indigo-800/50 p-1 rounded';
+                            timerEl.innerHTML = `
+                                <span>${timer.action} at ${new Date('1970-01-01T' + timer.time).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true})}</span>
+                                <button class="remove-individual-timer-btn text-red-500 hover:text-red-400" data-light-num="${lightNum}" data-timer-id="${timer.id}">&times;</button>
+                            `;
+                            timerListEl.appendChild(timerEl);
+                        });
+                    } else {
+                        timerListEl.innerHTML = '<p class="text-gray-500">No active timers.</p>';
+                    }
+                }
+
+                function checkTimers() {
+                    const now = new Date();
+                    const currentTime = now.toTimeString().slice(0, 5); // HH:MM format
+
+                    for (const lightNum in individualTimers) {
+                        if (individualTimers[lightNum].length > 0) {
+                            individualTimers[lightNum].forEach(timer => {
+                                if (timer.time === currentTime) {
+                                    const applianceName = document.getElementById(`appliance-name-${lightNum}`).textContent;
+                                    publishMessage(`homeautomation/project/light/${lightNum}/set`, timer.action, false);
+                                    addLog(`Timer executed: Turned ${timer.action} ${applianceName}.`);
+                                    showToast(`Timer: Turned ${timer.action} ${applianceName}.`, "success");
+                                    // Remove timer after execution
+                                    removeIndividualTimer(lightNum, timer.id);
+                                }
+                            });
+                        }
+                    }
+                }
+
+                setInterval(checkTimers, 1000); // Check every second
+
+                // --- Toast Notification Logic ---
+                function showToast(message, type = 'info') {
+                    const container = document.getElementById('toast-container');
+                    const toast = document.createElement('div');
+                    const colors = {
+                        info: 'bg-blue-500',
+                        success: 'bg-green-500',
+                        warning: 'bg-yellow-500',
+                        error: 'bg-red-500'
+                    };
+                    toast.className = `pointer-events-auto text-white text-sm rounded-lg shadow-lg px-4 py-2 transform transition-all duration-300 ease-in-out ${colors[type]} translate-x-full opacity-0`;
+                    toast.textContent = message;
+                    container.appendChild(toast);
+
+                    // Animate in
+                    setTimeout(() => {
+                        toast.classList.remove('translate-x-full', 'opacity-0');
+                    }, 100);
+
+                    // Animate out and remove
+                    setTimeout(() => {
+                        toast.classList.add('opacity-0', 'translate-x-full');
+                        setTimeout(() => toast.remove(), 300);
+                    }, 4000);
+                }
+
+                // --- MQTT Configuration ---
+                const brokerHost = "test.mosquitto.org";
+                const brokerPort = 8081;
+                const clientId = "WebAppClient_" + new Date().getTime();
+                // --- TOPICS FOR SYNCING STATE ---
+                const light_name_topic_wildcard = "homeautomation/project/light/+/name";
+                const light_type_topic_wildcard = "homeautomation/project/light/+/type";
+                const room_name_topic_wildcard = "homeautomation/project/room/+/name";
+                const light_config_timer_topic = "homeautomation/project/config/timer";
+                const esp_status_topic = "homeautomation/project/esp/status";
+                // --- TOPICS FOR FUNCTIONALITY ---
+                const light_status_topic_wildcard = "homeautomation/project/light/+/status";
+                const light_log_topic = "homeautomation/project/light/log";
+                const light_timer_set_topic = "homeautomation/project/light/setTimer";
+                const light_timer_clear_topic = "homeautomation/project/light/clearTimer";
+
+                // --- UI Elements ---
+                const connectionStatusEl = document.getElementById('connection-status');
+                const espConnectionStatusEl = document.getElementById('esp-connection-status');
+                const logContainerEl = document.getElementById('log-container');
+                const setTimerBtn = document.getElementById('set-timer-btn');
+                const onTimeInput = document.getElementById('on-time');
+                const offTimeInput = document.getElementById('off-time');
+                const activeTimerDisplay = document.getElementById('active-timer-display');
+                const activeTimerText = document.getElementById('active-timer-text');
+                const clearTimerBtn = document.getElementById('clear-timer-btn');
+                const drawer = document.getElementById('drawer');
+                const drawerBackdrop = document.getElementById('drawer-backdrop');
+                const drawerOpen = document.getElementById('drawer-open');
+                const drawerClose = document.getElementById('drawer-close');
+                const voiceBtn = document.getElementById('voice-btn');
+                const voiceBtnText = document.getElementById('voice-btn-text');
+                const voiceStatus = document.getElementById('voice-status');
+                const instructionsToggle = document.getElementById('instructions-toggle');
+                const voiceInstructions = document.getElementById('voice-instructions');
+                const instructionChevron = document.getElementById('instruction-chevron');
+
+                // --- MQTT Client Setup ---
+                let client;
+
+                function connectMqtt() {
+                    if (client && client.isConnected()) {
+                        console.log("Already connected to MQTT.");
+                        return;
+                    }
+                    client = new Paho.Client(brokerHost, brokerPort, clientId);
+                    client.onConnectionLost = onConnectionLost;
+                    client.onMessageArrived = onMessageArrived;
+                    client.connect({
+                        timeout: 3,
+                        useSSL: true,
+                        onSuccess: onConnect,
+                        onFailure: onFailure,
+                    });
+                }
+                
+                // --- MQTT Functions ---
+                function onConnect() {
+                    const statusDot = connectionStatusEl.querySelector('div');
+                    const statusText = connectionStatusEl.querySelector('p');
+                    statusDot.classList.replace('bg-red-500', 'bg-green-500');
+                    statusDot.classList.remove('animate-pulse');
+                    statusText.classList.replace('text-red-500', 'text-green-500');
+                    // Subscribe to all functional topics
+                    client.subscribe(light_status_topic_wildcard);
+                    client.subscribe(light_log_topic);
+                    // --- SUBSCRIBE TO STATE TOPICS TO SYNC ---
+                    client.subscribe(light_name_topic_wildcard);
+                    client.subscribe(light_type_topic_wildcard);
+                    client.subscribe(room_name_topic_wildcard);
+                    client.subscribe(light_config_timer_topic);
+                    client.subscribe(esp_status_topic);
+
+                    addLog("Web UI connected. Requesting initial status...");
+                    for (let i = 1; i <= NUM_LIGHTS; i++) {
+                        publishMessage(`homeautomation/project/light/${i}/getStatus`, "GET", false); // Don't retain status requests
+                    }
+                    updateDashboardOverview();
+                }
+
+                function onFailure(message) {
+                    const statusText = connectionStatusEl.querySelector('p');
+                    statusText.textContent = "UI Failed";
+                    console.error("UI Connection failed: " + message.errorMessage);
+                }
+
+                function onConnectionLost(responseObject) {
+                    if (responseObject.errorCode !== 0) {
+                        const statusDot = connectionStatusEl.querySelector('div');
+                        const statusText = connectionStatusEl.querySelector('p');
+                        statusDot.classList.replace('bg-green-500', 'bg-red-500');
+                        statusDot.classList.add('animate-pulse');
+                        statusText.classList.replace('text-green-500', 'text-red-500');
+                        statusText.textContent = "UI Lost";
+                        console.error("UI Connection lost: " + responseObject.errorMessage);
+                    }
+                }
+
+                function onMessageArrived(message) {
+                    const topic = message.destinationName;
+                    const payload = message.payloadString;
+
+                    if (topic === light_log_topic) {
+                        addLog(payload);
+                    } 
+                    // Handle status updates
+                    else if (topic.includes("/status")) {
+                        const topicParts = topic.split('/');
+                        const lightNumber = parseInt(topicParts[3]);
+                        if (!isNaN(lightNumber)) updateLightUI(lightNumber, payload);
+                    }
+                    // --- HANDLE INCOMING STATE SYNC MESSAGES ---
+                    else if (topic.startsWith("homeautomation/project/room/")) {
+                        const topicParts = topic.split('/');
+                        const room = topicParts[3];
+                        const nameEl = document.getElementById(`room-name-${room}`);
+                        if (nameEl && payload) {
+                            nameEl.textContent = payload;
+                        }
+                    }
+                    else if (topic.includes("/name")) {
+                        const topicParts = topic.split('/');
+                        const lightNumber = parseInt(topicParts[3]);
+                        if (!isNaN(lightNumber) && payload) {
+                            const appliance = appliances.find(a => a.id == lightNumber);
+                            if(appliance) appliance.name = payload;
+                            document.getElementById(`appliance-name-${lightNumber}`).textContent = payload;
+                        }
+                    }
+                    else if (topic.includes("/type")) {
+                        const topicParts = topic.split('/');
+                        const lightNumber = parseInt(topicParts[3]);
+                        if (!isNaN(lightNumber) && payload) {
+                            const appliance = appliances.find(a => a.id == lightNumber);
+                            if (appliance) {
+                                appliance.type = payload;
+                                const iconContainer = document.getElementById(`icon-container-${lightNumber}`);
+                                iconContainer.innerHTML = ICONS[payload] || ICONS['other'];
+                                iconContainer.dataset.type = payload;
                             }
                         }
                     }
-                    voiceStatus.textContent = `Unrecognized command.`;
-                };
+                    else if (topic === light_config_timer_topic) {
+                        if (payload) { // If payload is not empty, set timer
+                            const { on, off } = JSON.parse(payload);
+                            onTimeInput.value = on;
+                            offTimeInput.value = off;
+                            displayActiveTimer(on, off);
+                        } else { // If payload is empty, clear timer
+                            hideActiveTimer();
+                        }
+                    }
+                    else if (topic === esp_status_topic) {
+                        const espStatusDot = espConnectionStatusEl.querySelector('div');
+                        const espStatusText = espConnectionStatusEl.querySelector('p');
+                        if (payload.trim().toLowerCase() === "online") { // More robust check
+                            espStatusDot.classList.remove('bg-gray-400', 'bg-red-500');
+                            espStatusDot.classList.add('bg-green-500');
+                            espStatusText.classList.remove('text-gray-500', 'text-red-500');
+                            espStatusText.classList.add('text-green-500');
+                        } else { // "offline" or any other status
+                            espStatusDot.classList.remove('bg-gray-400', 'bg-green-500');
+                            espStatusDot.classList.add('bg-red-500');
+                            espStatusText.classList.remove('text-gray-500', 'text-green-500');
+                            espStatusText.classList.add('text-red-500');
+                        }
+                    }
+                }
 
-                voiceBtn.addEventListener('click', () => {
-                    if (recognizing) {
-                        recognition.stop();
+                function publishMessage(topic, payload, retained = false) {
+                    if (!client || !client.isConnected()) {
+                        addLog("Cannot publish. Not connected to broker.");
+                        return;
+                    }
+                    const message = new Paho.Message(payload);
+                    message.destinationName = topic;
+                    message.retained = retained; // Set the retained flag
+                    client.send(message);
+                }
+
+                // --- UI Logic ---
+                function updateLightUI(lightNumber, status) {
+                    const lightToggleEl = document.getElementById(`light-toggle-${lightNumber}`);
+                    const statusBadgeEl = document.getElementById(`status-badge-${lightNumber}`);
+                    const iconContainerEl = document.getElementById(`icon-container-${lightNumber}`);
+                    if (!lightToggleEl || !statusBadgeEl || !iconContainerEl) return;
+                    const isON = (status === "ON");
+                    lightToggleEl.checked = isON;
+                    // Update badge
+                    if (isON) {
+                        statusBadgeEl.textContent = "ON";
+                        statusBadgeEl.classList.remove("bg-gray-300", "dark:bg-gray-700", "text-gray-700", "dark:text-gray-200");
+                        statusBadgeEl.classList.add("bg-green-400", "dark:bg-green-600", "text-white");
+                    } else if (status === "OFF") {
+                        statusBadgeEl.textContent = "OFF";
+                        statusBadgeEl.classList.remove("bg-green-400", "dark:bg-green-600", "text-white");
+                        statusBadgeEl.classList.add("bg-red-400", "dark:bg-red-600", "text-white");
                     } else {
-                        recognition.start();
+                        statusBadgeEl.textContent = "Unknown";
+                        statusBadgeEl.classList.remove("bg-green-400", "dark:bg-green-600", "bg-red-400", "dark:bg-red-600", "text-white");
+                        statusBadgeEl.classList.add("bg-gray-300", "dark:bg-gray-700", "text-gray-700", "dark:text-gray-200");
                     }
-                });
-            } else {
-                voiceBtn.disabled = true;
-                voiceBtnText.textContent = "Not Supported";
-                voiceStatus.textContent = "Voice recognition not supported in this browser.";
-            }
-
-            // --- Name Editing Logic ---
-            let editingLightNum = null;
-            const editModal = document.getElementById('edit-modal');
-            const editNameInput = document.getElementById('edit-name');
-            const editTypeSelect = document.getElementById('edit-type');
-
-            function openEditModal(lightNum) {
-                editingLightNum = lightNum;
-                const appliance = appliances.find(a => a.id == lightNum);
-                editNameInput.value = appliance.name;
-                editTypeSelect.value = appliance.type;
-                editModal.classList.remove('hidden');
-                editModal.classList.add('flex');
-            }
-
-            function closeEditModal() {
-                editingLightNum = null;
-                editModal.classList.add('hidden');
-                editModal.classList.remove('flex');
-            }
-
-            document.getElementById('save-changes-btn').addEventListener('click', () => {
-                if (editingLightNum) {
-                    const newName = editNameInput.value.trim();
-                    const newType = editTypeSelect.value;
-                    saveChanges(editingLightNum, newName, newType);
-                }
-                closeEditModal();
-            });
-
-            document.getElementById('cancel-edit-btn').addEventListener('click', closeEditModal);
-
-            function saveChanges(lightNum, newName, newType) {
-                const appliance = appliances.find(a => a.id == lightNum);
-                if (newName && newName !== appliance.name) {
-                    appliance.name = newName;
-                    document.getElementById(`appliance-name-${lightNum}`).textContent = newName;
-                    publishMessage(`homeautomation/project/light/${lightNum}/name`, newName, true);
-                }
-                if (newType && newType !== appliance.type) {
-                    appliance.type = newType;
-                    const iconContainer = document.getElementById(`icon-container-${lightNum}`);
-                    iconContainer.innerHTML = ICONS[newType] || ICONS['other'];
-                    iconContainer.dataset.type = newType;
-                    publishMessage(`homeautomation/project/light/${lightNum}/type`, newType, true);
-                }
-            }
-
-            function enableRoomNameEditing(room) {
-                const nameEl = document.getElementById(`room-name-${room}`);
-                const currentName = nameEl.textContent;
-                
-                const inputEl = document.createElement('input');
-                inputEl.type = 'text';
-                inputEl.value = currentName;
-                inputEl.className = 'room-name-input font-semibold bg-transparent border-b-2 border-indigo-400 focus:outline-none text-gray-800 dark:text-gray-100';
-
-                nameEl.replaceWith(inputEl);
-                inputEl.focus();
-                inputEl.select();
-
-                const saveAndReplace = () => {
-                    const newName = inputEl.value.trim();
-                    
-                    const newNameEl = document.createElement('h3');
-                    newNameEl.id = `room-name-${room}`;
-                    newNameEl.className = 'font-semibold text-indigo-700 dark:text-indigo-300';
-                    
-                    if (newName && newName !== currentName) {
-                        saveRoomName(room, newName);
-                        newNameEl.textContent = newName;
+                    // Animate icon for ON state
+                    if (isON) {
+                        iconContainerEl.classList.add("icon-on");
                     } else {
-                        newNameEl.textContent = currentName;
+                        iconContainerEl.classList.remove("icon-on");
                     }
-                    inputEl.replaceWith(newNameEl);
-                };
+                    // Update the main dashboard overview whenever a light's UI changes
+                    updateDashboardOverview();
+                }
 
-                inputEl.addEventListener('blur', saveAndReplace);
-                inputEl.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        saveAndReplace();
-                    } else if (e.key === 'Escape') {
-                        inputEl.value = currentName; // Revert change
-                        saveAndReplace();
+                function addLog(logText) {
+                    const timestamp = new Date().toLocaleTimeString();
+                    const sanitizedText = logText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    // Determine log type
+                    let type = "system";
+                    if (/Turned ON|ON/.test(logText)) type = "on";
+                    else if (/Turned OFF|OFF/.test(logText)) type = "off";
+                    else if (/timer|Timer|set/i.test(logText)) type = "timer";
+                    else if (/Voice/i.test(logText)) type = "voice";
+                    logEntries.push({ time: timestamp, text: sanitizedText, type });
+                    renderLog();
+                }
+
+                // --- Timer Logic ---
+                function displayActiveTimer(onTime, offTime) {
+                    const formatTime = (time) => new Date('1970-01-01T' + time).toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: true});
+                    activeTimerText.textContent = `ON: ${formatTime(onTime)} - OFF: ${formatTime(offTime)}`;
+                    activeTimerDisplay.classList.remove('hidden');
+                }
+
+                function hideActiveTimer() {
+                    activeTimerDisplay.classList.add('hidden');
+                    onTimeInput.value = '';
+                    offTimeInput.value = '';
+                }
+                 
+                // --- Speech Synthesis ---
+                function speak(text) {
+                    if ('speechSynthesis' in window) {
+                        const utter = new SpeechSynthesisUtterance(text);
+                        utter.lang = 'en-US';
+                        window.speechSynthesis.speak(utter);
                     }
-                });
-            }
-
-            function saveRoomName(room, newName) {
-                publishMessage(`homeautomation/project/room/${room}/name`, newName, true);
-            }
-            
-            // --- Event Listeners ---
-            document.querySelectorAll('.toggle-checkbox').forEach(toggle => {
-                toggle.addEventListener('change', (event) => {
-                    const lightNum = event.target.dataset.lightNum;
-                    const state = event.target.checked ? "ON" : "OFF";
-                    publishMessage(`homeautomation/project/light/${lightNum}/set`, state, false);
-                });
-            });
-
-            lightCardContainer.addEventListener('click', function(event) {
-                const editBtn = event.target.closest('.edit-btn');
-                if (editBtn) {
-                    openEditModal(editBtn.dataset.lightNum);
                 }
 
-                const editRoomBtn = event.target.closest('.edit-room-name-btn');
-                if (editRoomBtn) {
-                    enableRoomNameEditing(editRoomBtn.dataset.room);
-                }
+                // --- Voice Control Logic ---
+                let recognition, recognizing = false;
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (SpeechRecognition) {
+                    recognition = new SpeechRecognition();
+                    recognition.continuous = false;
+                    recognition.lang = 'en-US';
+                    recognition.interimResults = false;
+                    recognition.maxAlternatives = 1;
 
-                const setTimerBtn = event.target.closest('.set-individual-timer-btn');
-                if (setTimerBtn) {
-                    setIndividualTimer(setTimerBtn.dataset.lightNum);
-                }
+                    recognition.onstart = () => {
+                        recognizing = true;
+                        voiceBtnText.textContent = "Listening...";
+                        voiceStatus.textContent = "Say a command...";
+                    };
 
-                const removeTimerBtn = event.target.closest('.remove-individual-timer-btn');
-                if (removeTimerBtn) {
-                    removeIndividualTimer(removeTimerBtn.dataset.lightNum, removeTimerBtn.dataset.timerId);
-                }
-            });
-            
-            setTimerBtn.addEventListener('click', () => {
-                const onTime = onTimeInput.value;
-                const offTime = offTimeInput.value;
-                if (!onTime || !offTime) {
-                    showToast("Please select both ON and OFF times.", "warning");
-                    return;
-                }
-                const timerPayload = JSON.stringify({ on: onTime, off: offTime });
-                // Publish to the config topic for other UIs to sync
-                publishMessage(light_config_timer_topic, timerPayload, true);
-                // Also publish to the functional topic for the ESP to act on
-                publishMessage(light_timer_set_topic, timerPayload, false);
-                addLog(`Setting timer: ON at ${onTime}, OFF at ${offTime}.`);
-                showToast(`Timer set: ON at ${onTime}, OFF at ${offTime}`, "success");
-            });
+                    recognition.onerror = (event) => {
+                        voiceStatus.textContent = "Error: " + event.error;
+                    };
 
-            clearTimerBtn.addEventListener('click', () => {
-                // Publish an empty payload to the config topic to clear the retained message
-                publishMessage(light_config_timer_topic, "", true); 
-                // Publish the functional clear command to the ESP
-                publishMessage(light_timer_clear_topic, "CLEAR", false);
-                addLog("Active timer has been cleared.");
-                showToast("Active timer cleared", "info");
-            });
+                    recognition.onend = () => {
+                        recognizing = false;
+                        voiceBtnText.textContent = "Start Listening";
+                        setTimeout(() => { if (!recognizing) voiceStatus.textContent = "" }, 2000);
+                    };
 
-            drawerOpen.onclick = () => {
-                drawer.classList.replace('drawer-closed', 'drawer-open');
-                drawerBackdrop.classList.remove('hidden');
-            };
-            const closeDrawer = () => {
-                drawer.classList.replace('drawer-open', 'drawer-closed');
-                drawerBackdrop.classList.add('hidden');
-            };
-            drawerClose.onclick = closeDrawer;
-            drawerBackdrop.onclick = closeDrawer;
+                    recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript.trim().toLowerCase();
+                        voiceStatus.textContent = `Heard: "${transcript}"`;
+                        
+                        if (transcript.includes("turn on all lights")) {
+                            for (let i = 1; i <= NUM_LIGHTS; i++) publishMessage(`homeautomation/project/light/${i}/set`, "ON");
+                            addLog("Voice: Turn ON all lights");
+                            speak("Turning on all lights");
+                            return;
+                        } 
+                        if (transcript.includes("turn off all lights")) {
+                            for (let i = 1; i <= NUM_LIGHTS; i++) publishMessage(`homeautomation/project/light/${i}/set`, "OFF");
+                            addLog("Voice: Turn OFF all lights");
+                            speak("Turning off all lights");
+                            return;
+                        }
 
-            document.getElementById('feedback-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                const feedbackSuccess = document.getElementById('feedback-success');
-                const email = document.getElementById('feedback-email').value;
-                const message = document.getElementById('feedback-message').value;
+                        const stateMatch = transcript.match(/turn (on|off)/);
+                        if (stateMatch) {
+                            const state = stateMatch[1]; // "on" or "off"
+                            for (let i = 1; i <= NUM_LIGHTS; i++) {
+                                const customName = document.getElementById(`appliance-name-${i}`).textContent.toLowerCase();
+                                const defaultName = `light ${i}`;
+                                if (transcript.includes(customName) || transcript.includes(defaultName)) {
+                                    publishMessage(`homeautomation/project/light/${i}/set`, state.toUpperCase());
+                                    addLog(`Voice: Turn ${state.toUpperCase()} ${customName}`);
+                                    speak(`Turning ${state} ${customName}`);
+                                    return; 
+                                }
+                            }
+                        }
+                        voiceStatus.textContent = `Unrecognized command.`;
+                        speak("Sorry, I did not understand the command.");
+                    };
 
-                const recipient = 'pikumandal5233@gmail.com';
-                const subject = 'Feedback from Smart Home UI';
-                const body = `Message from: ${email}\n\n${message}`;
-                const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                
-                window.location.href = mailtoLink;
-
-                feedbackSuccess.classList.remove('hidden');
-                setTimeout(() => feedbackSuccess.classList.add('hidden'), 3000);
-                e.target.reset();
-            });
-
-            instructionsToggle.addEventListener('click', () => {
-                const isHidden = voiceInstructions.style.maxHeight === '' || voiceInstructions.style.maxHeight === '0px';
-                if (isHidden) {
-                    voiceInstructions.style.maxHeight = voiceInstructions.scrollHeight + "px";
-                    instructionChevron.classList.add('rotate-180');
+                    voiceBtn.addEventListener('click', () => {
+                        if (recognizing) {
+                            recognition.stop();
+                        } else {
+                            recognition.start();
+                        }
+                    });
                 } else {
-                    voiceInstructions.style.maxHeight = '0px';
-                    instructionChevron.classList.remove('rotate-180');
+                    voiceBtn.disabled = true;
+                    voiceBtnText.textContent = "Not Supported";
+                    voiceStatus.textContent = "Voice recognition not supported in this browser.";
                 }
-            });
 
-            // --- Initial Page Load Check ---
-            if (sessionStorage.getItem('loggedInUser')) {
-                showMainApp();
-            }
+                // --- Name Editing Logic ---
+                let editingLightNum = null;
+                const editModal = document.getElementById('edit-modal');
+                const editNameInput = document.getElementById('edit-name');
+                const editTypeSelect = document.getElementById('edit-type');
 
-            // --- PWA Service Worker Registration ---
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('/sw.js').then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    }, err => {
-                        console.log('ServiceWorker registration failed: ', err);
+                function openEditModal(lightNum) {
+                    editingLightNum = lightNum;
+                    const appliance = appliances.find(a => a.id == lightNum);
+                    editNameInput.value = appliance.name;
+                    editTypeSelect.value = appliance.type;
+                    editModal.classList.remove('hidden');
+                    editModal.classList.add('flex');
+                }
+
+                function closeEditModal() {
+                    editingLightNum = null;
+                    editModal.classList.add('hidden');
+                    editModal.classList.remove('flex');
+                }
+
+                document.getElementById('save-changes-btn').addEventListener('click', () => {
+                    if (editingLightNum) {
+                        const newName = editNameInput.value.trim();
+                        const newType = editTypeSelect.value;
+                        saveChanges(editingLightNum, newName, newType);
+                    }
+                    closeEditModal();
+                });
+
+                document.getElementById('cancel-edit-btn').addEventListener('click', closeEditModal);
+
+                function saveChanges(lightNum, newName, newType) {
+                    const appliance = appliances.find(a => a.id == lightNum);
+                    if (newName && newName !== appliance.name) {
+                        appliance.name = newName;
+                        document.getElementById(`appliance-name-${lightNum}`).textContent = newName;
+                        publishMessage(`homeautomation/project/light/${lightNum}/name`, newName, true);
+                    }
+                    if (newType && newType !== appliance.type) {
+                        appliance.type = newType;
+                        const iconContainer = document.getElementById(`icon-container-${lightNum}`);
+                        iconContainer.innerHTML = ICONS[newType] || ICONS['other'];
+                        iconContainer.dataset.type = newType;
+                        publishMessage(`homeautomation/project/light/${lightNum}/type`, newType, true);
+                    }
+                }
+
+                function enableRoomNameEditing(room) {
+                    const nameEl = document.getElementById(`room-name-${room}`);
+                    const currentName = nameEl.textContent;
+                    
+                    const inputEl = document.createElement('input');
+                    inputEl.type = 'text';
+                    inputEl.value = currentName;
+                    inputEl.className = 'room-name-input font-semibold bg-transparent border-b-2 border-indigo-400 focus:outline-none text-gray-800 dark:text-gray-100';
+
+                    nameEl.replaceWith(inputEl);
+                    inputEl.focus();
+                    inputEl.select();
+
+                    const saveAndReplace = () => {
+                        const newName = inputEl.value.trim();
+                        
+                        const newNameEl = document.createElement('h3');
+                        newNameEl.id = `room-name-${room}`;
+                        newNameEl.className = 'font-semibold text-indigo-700 dark:text-indigo-300';
+                        
+                        if (newName && newName !== currentName) {
+                            saveRoomName(room, newName);
+                            newNameEl.textContent = newName;
+                        } else {
+                            newNameEl.textContent = currentName;
+                        }
+                        inputEl.replaceWith(newNameEl);
+                    };
+
+                    inputEl.addEventListener('blur', saveAndReplace);
+                    inputEl.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveAndReplace();
+                        } else if (e.key === 'Escape') {
+                            inputEl.value = currentName; // Revert change
+                            saveAndReplace();
+                        }
+                    });
+                }
+
+                function saveRoomName(room, newName) {
+                    publishMessage(`homeautomation/project/room/${room}/name`, newName, true);
+                }
+                
+                // --- Event Listeners ---
+                document.querySelectorAll('.toggle-checkbox').forEach(toggle => {
+                    toggle.addEventListener('change', (event) => {
+                        const lightNum = event.target.dataset.lightNum;
+                        const state = event.target.checked ? "ON" : "OFF";
+                        publishMessage(`homeautomation/project/light/${lightNum}/set`, state, false);
                     });
                 });
-            }
-        });
+
+                lightCardContainer.addEventListener('click', function(event) {
+                    const editBtn = event.target.closest('.edit-btn');
+                    if (editBtn) {
+                        openEditModal(editBtn.dataset.lightNum);
+                    }
+
+                    const editRoomBtn = event.target.closest('.edit-room-name-btn');
+                    if (editRoomBtn) {
+                        enableRoomNameEditing(editRoomBtn.dataset.room);
+                    }
+
+                    const setTimerBtn = event.target.closest('.set-individual-timer-btn');
+                    if (setTimerBtn) {
+                        setIndividualTimer(setTimerBtn.dataset.lightNum);
+                    }
+
+                    const removeTimerBtn = event.target.closest('.remove-individual-timer-btn');
+                    if (removeTimerBtn) {
+                        removeIndividualTimer(removeTimerBtn.dataset.lightNum, removeTimerBtn.dataset.timerId);
+                    }
+                });
+                
+                setTimerBtn.addEventListener('click', () => {
+                    const onTime = onTimeInput.value;
+                    const offTime = offTimeInput.value;
+                    if (!onTime || !offTime) {
+                        showToast("Please select both ON and OFF times.", "warning");
+                        return;
+                    }
+                    const timerPayload = JSON.stringify({ on: onTime, off: offTime });
+                    // Publish to the config topic for other UIs to sync
+                    publishMessage(light_config_timer_topic, timerPayload, true);
+                    // Also publish to the functional topic for the ESP to act on
+                    publishMessage(light_timer_set_topic, timerPayload, false);
+                    addLog(`Setting timer: ON at ${onTime}, OFF at ${offTime}.`);
+                    showToast(`Timer set: ON at ${onTime}, OFF at ${offTime}`, "success");
+                });
+
+                clearTimerBtn.addEventListener('click', () => {
+                    // Publish an empty payload to the config topic to clear the retained message
+                    publishMessage(light_config_timer_topic, "", true); 
+                    // Publish the functional clear command to the ESP
+                    publishMessage(light_timer_clear_topic, "CLEAR", false);
+                    addLog("Active timer has been cleared.");
+                    showToast("Active timer cleared", "info");
+                });
+
+                // --- DRAWER AND ACCORDION LOGIC ---
+                drawerOpen.onclick = () => {
+                    drawer.classList.replace('drawer-closed', 'drawer-open');
+                    drawerBackdrop.classList.remove('hidden');
+                };
+                const closeDrawer = () => {
+                    drawer.classList.replace('drawer-open', 'drawer-closed');
+                    drawerBackdrop.classList.add('hidden');
+                };
+                drawerClose.onclick = closeDrawer;
+                drawerBackdrop.onclick = closeDrawer;
+                
+                // Accordion Logic
+                drawer.addEventListener('click', (e) => {
+                    const toggle = e.target.closest('.accordion-toggle');
+                    if (!toggle) return;
+
+                    const content = document.getElementById(`accordion-${toggle.dataset.accordion}`);
+                    const chevron = toggle.querySelector('svg');
+                    const isExpanded = content.style.maxHeight && content.style.maxHeight !== '0px';
+
+                    // Close all other sections
+                    drawer.querySelectorAll('.accordion-content').forEach(item => {
+                        if (item !== content) {
+                            item.style.maxHeight = '0px';
+                             const otherChevron = item.previousElementSibling.querySelector('svg');
+                             if (otherChevron) otherChevron.classList.remove('rotate-180');
+                        }
+                    });
+
+                    // Toggle the clicked section
+                    if (isExpanded) {
+                        content.style.maxHeight = '0px';
+                        chevron.classList.remove('rotate-180');
+                    } else {
+                        content.style.maxHeight = content.scrollHeight + 'px';
+                        chevron.classList.add('rotate-180');
+                    }
+                });
+
+                document.getElementById('feedback-form').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const feedbackSuccess = document.getElementById('feedback-success');
+                    const email = document.getElementById('feedback-email').value;
+                    const message = document.getElementById('feedback-message').value;
+
+                    // Updated to send to both email addresses
+                    const recipients = 'pikumandal5233@gmail.com,arnabmandal123123@gmail.com';
+                    const subject = 'Feedback from Smart Home UI';
+                    const body = `Message from: ${email}\n\n${message}`;
+                    const mailtoLink = `mailto:${recipients}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                    
+                    window.location.href = mailtoLink;
+
+                    feedbackSuccess.classList.remove('hidden');
+                    setTimeout(() => feedbackSuccess.classList.add('hidden'), 3000);
+                    e.target.reset();
+                });
+
+                instructionsToggle.addEventListener('click', () => {
+                    const isHidden = voiceInstructions.style.maxHeight === '' || voiceInstructions.style.maxHeight === '0px';
+                    if (isHidden) {
+                        voiceInstructions.style.maxHeight = voiceInstructions.scrollHeight + "px";
+                        instructionChevron.classList.add('rotate-180');
+                    } else {
+                        voiceInstructions.style.maxHeight = '0px';
+                        instructionChevron.classList.remove('rotate-180');
+                    }
+                });
+
+                // --- Initial Page Load Check ---
+                if (sessionStorage.getItem('loggedInUser')) {
+                    showMainApp();
+                }
+
+            });
 
         })(); // End of IIFE
     </script>
 </body>
 </html>
+

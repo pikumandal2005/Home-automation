@@ -24,24 +24,24 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f4f6fb;
+            background-color: #f9fafb; /* Use a cleaner, more neutral light gray (gray-50) */
             color: #22223b;
         }
         .dark body {
-            background-color: #101624;
+            background-color: #0f172a; /* Tailwind slate-900 */
             color: #e0e7ef;
         }
 
         /* Card styling */
         .card {
-            background: linear-gradient(135deg, #ffffff 80%, #e0e7ef 100%);
+            background-color: #ffffff; /* Solid white for a cleaner look */
             border-radius: 1.25rem;
-            box-shadow: 0 6px 32px 0 rgba(60,72,88,0.10);
-            border: 1px solid #e5e7eb;
+            box-shadow: 0 8px 16px -4px rgba(149, 157, 165, 0.1), 0 0 4px 0 rgba(149, 157, 165, 0.05); /* Softer, more modern shadow */
+            border: 1px solid #f3f4f6; /* Lighter border (gray-100) */
             transition: box-shadow 0.2s;
         }
         .card:hover {
-            box-shadow: 0 12px 40px 0 rgba(60,72,88,0.18);
+            box-shadow: 0 10px 20px -5px rgba(149, 157, 165, 0.15), 0 0 4px 0 rgba(149, 157, 165, 0.05);
         }
         .dark .card {
             background: linear-gradient(135deg, #1e293b 80%, #334155 100%);
@@ -113,7 +113,7 @@
             top: 0;
             left: 0;
             right: 0;
-            bottom: 0;
+            bottom: 0; 
             background-color: #cbd5e1;
             border-radius: 16px;
             transition: background-color 0.2s ease-in-out;
@@ -133,7 +133,7 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         .toggle-checkbox:checked + .toggle-track {
-            background-color: #4f46e5;
+            background-color: #4ade80; /* Use a clear green for 'ON' state */
         }
         .dark .toggle-checkbox:checked + .toggle-track {
             background-color: #818cf8;
@@ -488,27 +488,27 @@
             <h2 class="text-xl font-bold section-title mb-4">Dashboard</h2>
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 text-center">
                 <!-- Total Devices -->
-                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg shadow-inner">
+                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl shadow-inner">
                     <p class="text-sm text-gray-500 dark:text-gray-400">Total</p>
                     <p id="dashboard-total-lights" class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">0</p>
                 </div>
                 <!-- Devices ON -->
-                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg shadow-inner">
+                <div class="bg-green-100 dark:bg-green-900/40 p-3 rounded-xl shadow-inner">
                     <p class="text-sm text-green-600 dark:text-green-400">On</p>
                     <p id="dashboard-on-count" class="text-2xl font-bold text-green-600 dark:text-green-400">0</p>
                 </div>
                 <!-- Devices OFF -->
-                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg shadow-inner">
+                <div class="bg-red-100 dark:bg-red-900/40 p-3 rounded-xl shadow-inner">
                     <p class="text-sm text-gray-500 dark:text-gray-400">Off</p>
                     <p id="dashboard-off-count" class="text-2xl font-bold text-gray-600 dark:text-gray-400">0</p>
                 </div>
                 <!-- Timer Status -->
-                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg shadow-inner">
+                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl shadow-inner">
                     <p class="text-sm text-gray-500 dark:text-gray-400">Timer</p>
                     <p id="dashboard-timer-status" class="text-sm font-semibold text-gray-600 dark:text-gray-300 mt-2">No Timer</p>
                 </div>
                 <!-- Connection Status -->
-                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg shadow-inner flex flex-col justify-center items-center">
+                <div class="bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl shadow-inner flex flex-col justify-center items-center">
                     <div id="connection-status" class="flex items-center gap-1.5" title="Web UI Connection">
                         <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
                         <p class="text-xs font-medium text-red-500">UI</p>

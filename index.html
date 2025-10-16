@@ -16,6 +16,26 @@
         }
     </script>
     <style>
+        /* Flame alarm banner */
+        #flame-alarm-banner {
+            animation: pulse-bg 1s infinite;
+        }
+        @keyframes pulse-bg {
+            0%, 100% { background-color: #dc2626; } /* red-600 */
+            50% { background-color: #ef4444; } /* red-500 */
+        }
+        /* Fire icon animation */
+        @keyframes shake {
+            0%, 100% { transform: translate(0, 0) rotate(0); }
+            25% { transform: translate(1px, -1px) rotate(-2deg); }
+            50% { transform: translate(-1px, 1px) rotate(2deg); }
+            75% { transform: translate(1px, 1px) rotate(-2deg); }
+        }
+        .fire-icon-active {
+            display: flex !important;
+            animation: shake 0.3s infinite;
+        }
+
         /* Theme toggle button styling */
         .theme-btn.active {
             background: linear-gradient(90deg, #6366f1 0%, #4f46e5 100%);
@@ -308,6 +328,11 @@
     </style>
 </head>
 <body class="dark:bg-slate-900 bg-slate-50 transition-colors duration-300">
+    <!-- Flame Alarm Banner -->
+    <div id="flame-alarm-banner" class="hidden fixed top-0 left-0 right-0 z-[100] bg-red-600 text-white text-center p-4 text-2xl font-bold">
+        &#x1F525; FIRE DETECTED! &#x1F525;
+    </div>
+
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-2 items-end pointer-events-none"></div>
 
@@ -516,10 +541,14 @@
         <div id="dashboard-overview" class="mb-6">
              <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold section-title">Dashboard</h2>
-                <button id="refresh-btn" class="btn btn-sm flex items-center gap-2">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 4l5 5M20 20l-5-5"></path></svg>
-                    Refresh
-                </button>
+                <div class="flex items-center gap-4">
+                    <button id="stop-alarm-btn" title="Stop and Clear Alarm" class="btn p-2 h-10 w-10 flex items-center justify-center bg-gray-400 dark:bg-gray-600 cursor-not-allowed" disabled>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a5 5 0 015-5"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 15 7.5 15 9c2 0 2.986-2.5 2.986-2.5A8 8 0 0117.657 18.657z"/></svg>
+                    </button>
+                    <button id="refresh-btn" title="Refresh" class="btn p-2 h-10 w-10 flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 4l5 5M20 20l-5-5"></path></svg>
+                    </button>
+                </div>
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 text-center">
                 <!-- Total Devices -->
@@ -692,6 +721,44 @@
     <script>
         // IIFE to encapsulate the entire application logic
         (function() {
+            // --- ALARM SYSTEM LOGIC ---
+            let isAlarmPlaying = false;
+            const alarmUtterance = new SpeechSynthesisUtterance("Alert! Fire detected!");
+            alarmUtterance.lang = 'en-US';
+            alarmUtterance.pitch = 1.5;
+            alarmUtterance.rate = 1.2;
+
+            function loopAlarm() {
+                if (isAlarmPlaying) {
+                    window.speechSynthesis.speak(alarmUtterance);
+                }
+            }
+            alarmUtterance.onend = loopAlarm; // Loop the speech
+
+            function startAlarm() {
+                if (isAlarmPlaying) return;
+                isAlarmPlaying = true;
+                document.getElementById('flame-alarm-banner').classList.remove('hidden');
+                const stopBtn = document.getElementById('stop-alarm-btn');
+                stopBtn.disabled = false;
+                stopBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
+                stopBtn.classList.add('bg-red-600', 'dark:bg-red-700', 'hover:bg-red-700', 'dark:hover:bg-red-800');
+                // Ensure speech synthesis is ready and start
+                window.speechSynthesis.cancel(); // Cancel any previous speech
+                loopAlarm();
+            }
+
+            function stopAlarm() {
+                if (!isAlarmPlaying) return;
+                isAlarmPlaying = false;
+                document.getElementById('flame-alarm-banner').classList.add('hidden');
+                const stopBtn = document.getElementById('stop-alarm-btn');
+                stopBtn.disabled = true;
+                stopBtn.classList.add('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
+                stopBtn.classList.remove('bg-red-600', 'dark:bg-red-700', 'hover:bg-red-700', 'dark:hover:bg-red-800');
+                window.speechSynthesis.cancel();
+            }
+
             // --- Enhanced Activity Log Logic ---
             const logEntries = [];
             function getLogIcon(type) {
@@ -1013,6 +1080,8 @@
                 const brokerHost = "test.mosquitto.org";
                 const brokerPort = 8081;
                 const clientId = "WebAppClient_" + new Date().getTime();
+                const flame_alarm_topic = "homeautomation/project/alarm/flame";
+
                 // --- TOPICS FOR SYNCING STATE ---
                 const light_name_topic_wildcard = "homeautomation/project/light/+/name";
                 const light_type_topic_wildcard = "homeautomation/project/light/+/type";
@@ -1084,6 +1153,8 @@
                     // Subscribe to all functional topics
                     client.subscribe(light_status_topic_wildcard);
                     client.subscribe(light_log_topic);
+                    client.subscribe(flame_alarm_topic); // Subscribe to the new flame alarm topic
+
                     // --- SUBSCRIBE TO STATE TOPICS TO SYNC ---
                     client.subscribe(light_name_topic_wildcard);
                     client.subscribe(light_type_topic_wildcard);
@@ -1125,6 +1196,16 @@
                     if (topic === light_log_topic) {
                         addLog(payload);
                     } 
+                    else if (topic === flame_alarm_topic) {
+                        if (payload === "DETECTED") {
+                            startAlarm();
+                            addLog("CRITICAL: Flame alarm triggered!");
+                            showToast("FIRE DETECTED!", "error");
+                        } else if (payload === "CLEAR") {
+                            stopAlarm();
+                            addLog("INFO: Flame alarm cleared.");
+                        }
+                    }
                     // Handle individual light status updates
                     else if (topic.startsWith("homeautomation/project/light/") && topic.endsWith("/status")) {
                         const topicParts = topic.split('/');
@@ -1644,6 +1725,13 @@
                     updateDashboardOverview();
                 }
                 renderAllAppliances();
+
+                // Add event listener for the stop alarm button
+                document.getElementById('stop-alarm-btn').addEventListener('click', () => {
+                    stopAlarm();
+                    publishMessage(flame_alarm_topic, "", true); // Clear the retained message
+                    addLog("Alarm stopped and cleared by user.");
+                });
 
             });
 

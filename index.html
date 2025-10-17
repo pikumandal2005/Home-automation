@@ -465,12 +465,12 @@
                                     <tr class="border-b border-slate-200 dark:border-slate-700">
                                         <td class="p-2 border border-slate-300 dark:border-slate-600 font-medium">Piku Mandal</td>
                                         <td class="p-2 border border-slate-300 dark:border-slate-600">B.Tech (2nd Year)</td>
-                                        <td class="p-2 border border-slate-300 dark:border-slate-600">Concept, Software, Hardware & UI/UX</td>
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600">Concept, Software, Hardware &amp; UI/UX</td>
                                     </tr>
                                     <tr>
                                         <td class="p-2 border border-slate-300 dark:border-slate-600 font-medium">Arnab Mandal</td>
                                         <td class="p-2 border border-slate-300 dark:border-slate-600">Diploma (3rd Year)</td>
-                                        <td class="p-2 border border-slate-300 dark:border-slate-600">Software, Hardware & UI/UX</td>
+                                        <td class="p-2 border border-slate-300 dark:border-slate-600">Software, Hardware &amp; UI/UX</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -609,7 +609,7 @@
                             <li class="ml-4"><i>"Turn on Desk Lamp"</i></li>
                             <li class="ml-4"><i>"Turn off all lights"</i></li>
                             <li>The system uses the custom names you set for each light.</li>
-                            <li>Voice control works best on Chrome & Edge browsers.</li>
+                            <li>Voice control works best on Chrome &amp; Edge browsers.</li>
                         </ul>
                     </div>
                 </div>
@@ -892,8 +892,8 @@
 
                 window.handleLogin = () => {
                     // --- FIXED CREDENTIALS ---
-                    const FIXED_ID = "Admin";
-                    const FIXED_PASSWORD = "Admin";
+                    const FIXED_ID = "Piku";
+                    const FIXED_PASSWORD = "123";
 
                     loginBtnText.classList.add('hidden');
                     loginSpinner.classList.remove('hidden');
@@ -1077,8 +1077,8 @@
                 }
 
                 // --- MQTT Configuration ---
-                const brokerHost = "test.mosquitto.org";
-                const brokerPort = 8081;
+                const brokerHost = "broker.hivemq.com";
+                const brokerPort = 8884;
                 const clientId = "WebAppClient_" + new Date().getTime();
                 const flame_alarm_topic = "homeautomation/project/alarm/flame";
 
@@ -1136,6 +1136,8 @@
                 
                 function reconnect() {
                     addLog("Attempting to reconnect...");
+                    const statusText = connectionStatusEl.querySelector('p');
+                    statusText.textContent = "Reconnecting...";
                     if (client && client.isConnected()) {
                         client.disconnect();
                     }
@@ -1145,28 +1147,29 @@
                 
                 // --- MQTT Functions ---
                 function onConnect() {
+                    console.log("MQTT onConnect: Successfully connected to broker.");
                     const statusDot = connectionStatusEl.querySelector('div');
                     const statusText = connectionStatusEl.querySelector('p');
                     statusDot.classList.replace('bg-red-500', 'bg-green-500');
                     statusDot.classList.remove('animate-pulse');
                     statusText.classList.replace('text-red-500', 'text-green-500');
-                    // Subscribe to all functional topics
+                    
+                    // Subscribe to all topics
+                    console.log("MQTT: Subscribing to topics...");
                     client.subscribe(light_status_topic_wildcard);
                     client.subscribe(light_log_topic);
-                    client.subscribe(flame_alarm_topic); // Subscribe to the new flame alarm topic
-
-                    // --- SUBSCRIBE TO STATE TOPICS TO SYNC ---
+                    client.subscribe(flame_alarm_topic);
                     client.subscribe(light_name_topic_wildcard);
                     client.subscribe(light_type_topic_wildcard);
                     client.subscribe(room_name_topic_wildcard);
                     client.subscribe(light_config_timer_topic);
                     client.subscribe(esp_status_topic);
+                    console.log("MQTT: Subscriptions sent.");
 
                     addLog("Web UI connected. Requesting initial status...");
                     for (let i = 1; i <= NUM_LIGHTS; i++) {
-                        publishMessage(`homeautomation/project/light/${i}/getStatus`, "GET", false); // Don't retain status requests
+                        publishMessage(`homeautomation/project/light/${i}/getStatus`, "GET", false);
                     }
-                    // Also request the ESP's status
                     publishMessage(`homeautomation/project/esp/getStatus`, "GET", false);
                     updateDashboardOverview();
                 }
@@ -1174,7 +1177,8 @@
                 function onFailure(message) {
                     const statusText = connectionStatusEl.querySelector('p');
                     statusText.textContent = "UI Failed";
-                    console.error("UI Connection failed: " + message.errorMessage);
+                    console.error("MQTT onFailure: Connection failed: ", message.errorMessage);
+                    addLog(`MQTT connection failed: ${message.errorMessage}`);
                 }
 
                 function onConnectionLost(responseObject) {
@@ -1185,13 +1189,17 @@
                         statusDot.classList.add('animate-pulse');
                         statusText.classList.replace('text-green-500', 'text-red-500');
                         statusText.textContent = "UI Lost";
-                        console.error("UI Connection lost: " + responseObject.errorMessage);
+                        console.error("MQTT onConnectionLost: Connection lost: ", responseObject.errorMessage);
+                        addLog(`MQTT connection lost: ${responseObject.errorMessage}`);
                     }
                 }
 
                 function onMessageArrived(message) {
                     const topic = message.destinationName;
                     const payload = message.payloadString;
+                    const isRetained = message.retained;
+
+                    console.log(`MQTT onMessageArrived: Topic: ${topic}, Payload: '${payload}', Retained: ${isRetained}`);
 
                     if (topic === light_log_topic) {
                         addLog(payload);
@@ -1209,7 +1217,7 @@
                     // Handle individual light status updates
                     else if (topic.startsWith("homeautomation/project/light/") && topic.endsWith("/status")) {
                         const topicParts = topic.split('/');
-                        const lightNumber = parseInt(topicParts[3]); // e.g., from .../light/1/status
+                        const lightNumber = parseInt(topicParts[3]);
                         if (!isNaN(lightNumber)) updateLightUI(lightNumber, payload);
                     }
                     // --- HANDLE INCOMING STATE SYNC MESSAGES ---
@@ -1244,31 +1252,35 @@
                         }
                     }
                     else if (topic === light_config_timer_topic) {
-                        if (payload) { // If payload is not empty, set timer
+                        if (payload) {
                             const { on, off } = JSON.parse(payload);
                             onTimeInput.value = on;
                             offTimeInput.value = off;
                             displayActiveTimer(on, off);
-                        } else { // If payload is empty, clear timer
+                        } else {
                             hideActiveTimer();
                         }
                     }
                     else if (topic === esp_status_topic) {
+                        console.log(`Processing ESP status: Payload='${payload.trim().toLowerCase()}'`);
                         const espStatusDot = espConnectionStatusEl.querySelector('div');
                         const espStatusText = espConnectionStatusEl.querySelector('p');
                         if (payload.trim().toLowerCase() === "online") {
+                            console.log("Setting ESP status to ONLINE.");
                             espStatusDot.classList.remove('bg-gray-400', 'bg-red-500');
                             espStatusDot.classList.add('bg-green-500');
                             espStatusText.classList.remove('text-gray-500', 'text-red-500');
                             espStatusText.classList.add('text-green-500');
+                            espStatusText.textContent = "Online";
                         } else { // "offline" or any other status
+                            console.log("Setting ESP status to OFFLINE.");
                             espStatusDot.classList.remove('bg-gray-400', 'bg-green-500');
                             espStatusDot.classList.add('bg-red-500');
                             espStatusText.classList.remove('text-gray-500', 'text-green-500');
                             espStatusText.classList.add('text-red-500');
+                            espStatusText.textContent = "Offline";
                         }
 
-                        // Handle the LWT message for offline status
                         if (payload.trim().toLowerCase() === "offline") {
                             addLog("ESP device has gone offline.");
                             showToast("ESP device disconnected.", "error");
@@ -1673,7 +1685,7 @@
                 // --- DYNAMIC UI RENDERING ---
                 const ICONS = {
                     light: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 21a2 2 0 01-2-2V17a2 2 0 012-2h6a2 2 0 012 2v2a2 2 0 01-2 2H9zM9 15V9a3 3 0 013-3h0a3 3 0 013 3v6M12 6V3m-4 3h8"></path></svg>',
-                    fan: '<svg class="w-16 h-16 mx-auto appliance-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5.5A6.5 6.5 0 1 0 18.5 12H12V5.5z" /><path d="M12 18.5A6.5 6.5 0 1 0 5.5 12H12v6.5z" /><path d="M5.5 12A6.5 6.5 0 1 0 12 5.5V12H5.5z" /></svg>',
+                    fan: '<svg class="w-16 h-16 mx-auto appliance-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5.5A6.5 6.5 0 1 0 18.5 12H12V5.5z" /><path d="M12 18.5A6.5 6.5 0 1 0 5.5 12H12v6.5z" /><path d="M5.5 12A6.5 6.5 0 1 0 12 5.5V12H5.5z" /></svg',
                     other: '<svg class="w-16 h-16 mx-auto appliance-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 20a1 1 0 01-1-1v-8H7a1 1 0 01-1-1V5a1 1 0 011-1h10a1 1 0 011 1v5a1 1 0 01-1 1h-3v8a1 1 0 01-1 1h-2z"></path></svg>'
                 };
                 const appliances = [

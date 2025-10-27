@@ -1300,6 +1300,12 @@
                 </svg>
                 Analytics
             </button>
+            <button class="nav-tab px-4 py-2 rounded-t-lg font-semibold transition-all" data-page="logs">
+                <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                Logs
+            </button>
         </div>
 
         <!-- Dashboard Page -->
@@ -1343,15 +1349,24 @@
                     <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Timer</p>
                     <p id="dashboard-timer-status" class="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-2">No Timer</p>
                 </div>
-                <!-- Connection Status -->
+                <!-- Connection Status with WiFi Signal -->
                 <div class="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800/70 dark:to-gray-900/60 p-4 rounded-xl shadow-inner border border-gray-300 dark:border-indigo-500/20 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 flex flex-col justify-center items-center dark:hover:border-indigo-500/40">
                     <div id="connection-status" class="flex items-center gap-2 mb-1" title="Web UI Connection">
                         <div class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-lg"></div>
                         <p class="text-xs font-semibold text-red-500">UI</p>
                     </div>
-                    <div id="esp-connection-status" class="flex items-center gap-2" title="ESP Device Connection">
+                    <div id="esp-connection-status" class="flex items-center gap-2 mb-1" title="ESP Device Connection">
                         <div class="w-2.5 h-2.5 rounded-full bg-gray-400 shadow-sm"></div>
                         <p class="text-xs font-semibold text-gray-500 dark:text-gray-400">ESP</p>
+                    </div>
+                    <div id="wifi-signal-status" class="flex flex-col items-center gap-1" title="ESP WiFi Signal Strength">
+                        <div id="wifi-signal-bars" class="flex items-end gap-0.5 h-4">
+                            <div class="wifi-bar w-1 bg-gray-300 dark:bg-gray-600 rounded-sm" style="height: 25%"></div>
+                            <div class="wifi-bar w-1 bg-gray-300 dark:bg-gray-600 rounded-sm" style="height: 50%"></div>
+                            <div class="wifi-bar w-1 bg-gray-300 dark:bg-gray-600 rounded-sm" style="height: 75%"></div>
+                            <div class="wifi-bar w-1 bg-gray-300 dark:bg-gray-600 rounded-sm" style="height: 100%"></div>
+                        </div>
+                        <p id="wifi-signal-text" class="text-xs font-semibold text-gray-500 dark:text-gray-400">WiFi</p>
                     </div>
                 </div>
             </div>
@@ -1465,23 +1480,6 @@
                 </div>
                 <button id="set-timer-btn" class="btn mt-4 w-full">Set Automatic Task</button>
             </div>
-            
-            <!-- Activity Log -->
-            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 sm:p-6">
-                <h2 class="section-title mb-4 text-center">Activity Log</h2>
-                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-2">
-                    <input id="log-search" type="text" placeholder="Search log..." class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm flex-1" />
-                    <select id="log-filter" class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm">
-                        <option value="all">All</option>
-                        <option value="on">ON</option>
-                        <option value="off">OFF</option>
-                        <option value="timer">Timer</option>
-                        <option value="voice">Voice</option>
-                        <option value="system">System</option>
-                    </select>
-                </div>
-                <div id="log-container" class="activity-log h-48 lg:h-56 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-xs rounded-md p-3 overflow-y-auto space-y-1"></div>
-            </div>
         </div>
         <!-- End Dashboard Page -->
 
@@ -1569,6 +1567,73 @@
             </div>
         </div>
         <!-- End Analytics Page -->
+
+        <!-- Logs Page -->
+        <div id="page-logs" class="page-content hidden">
+            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 sm:p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold section-title">Activity Logs</h2>
+                    <div class="flex gap-2">
+                        <button id="clear-logs-btn" class="btn px-3 py-2 text-sm bg-red-500 hover:bg-red-600" title="Clear all logs">
+                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                            Clear
+                        </button>
+                        <button id="export-logs-btn" class="btn px-3 py-2 text-sm" title="Export logs as text">
+                            <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            Export
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Filter and Search -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                    <input id="log-search" type="text" placeholder="Search logs..." class="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 text-sm" />
+                    <select id="log-filter" class="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 text-sm">
+                        <option value="all">All Events</option>
+                        <option value="on">Turned ON</option>
+                        <option value="off">Turned OFF</option>
+                        <option value="timer">Timer Events</option>
+                        <option value="voice">Voice Commands</option>
+                        <option value="system">System Events</option>
+                    </select>
+                    <input id="log-date-from" type="date" class="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 text-sm" placeholder="From date" />
+                    <input id="log-date-to" type="date" class="px-3 py-2 rounded border border-gray-300 dark:border-gray-600 text-sm" placeholder="To date" />
+                </div>
+                
+                <!-- Log Statistics -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                    <div class="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg text-center">
+                        <p class="text-xs text-blue-600 dark:text-blue-400 font-semibold mb-1">Total Logs</p>
+                        <p id="total-logs-count" class="text-2xl font-bold text-blue-700 dark:text-blue-300">0</p>
+                    </div>
+                    <div class="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg text-center">
+                        <p class="text-xs text-green-600 dark:text-green-400 font-semibold mb-1">ON Events</p>
+                        <p id="on-logs-count" class="text-2xl font-bold text-green-700 dark:text-green-300">0</p>
+                    </div>
+                    <div class="bg-red-100 dark:bg-red-900/30 p-3 rounded-lg text-center">
+                        <p class="text-xs text-red-600 dark:text-red-400 font-semibold mb-1">OFF Events</p>
+                        <p id="off-logs-count" class="text-2xl font-bold text-red-700 dark:text-red-300">0</p>
+                    </div>
+                    <div class="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-lg text-center">
+                        <p class="text-xs text-purple-600 dark:text-purple-400 font-semibold mb-1">Voice Commands</p>
+                        <p id="voice-logs-count" class="text-2xl font-bold text-purple-700 dark:text-purple-300">0</p>
+                    </div>
+                </div>
+                
+                <!-- Activity Log Container -->
+                <div id="log-container" class="activity-log h-96 lg:h-[32rem] bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-xs rounded-md p-3 overflow-y-auto space-y-1 border border-gray-300 dark:border-gray-600"></div>
+                
+                <!-- Log Info -->
+                <div class="mt-4 text-xs text-gray-600 dark:text-gray-400 text-center">
+                    <p>Logs are stored locally in your browser. Clearing browser data will remove all logs.</p>
+                </div>
+            </div>
+        </div>
+        <!-- End Logs Page -->
 
         </main>
     </div>
@@ -2124,6 +2189,8 @@
                 const room_name_topic_wildcard = "homeautomation/project/room/+/name";
                 const light_config_timer_topic = "homeautomation/project/config/timer";
                 const esp_status_topic = "homeautomation/project/esp/status";
+                const esp_wifi_signal_topic = "homeautomation/project/esp/wifi_signal";
+                const analytics_topic = "homeautomation/project/analytics";
                 // --- TOPICS FOR FUNCTIONALITY ---
                 const light_status_topic_wildcard = "homeautomation/project/light/+/status";
                 const light_log_topic = "homeautomation/project/light/log";
@@ -2133,6 +2200,8 @@
                 // --- UI Elements ---
                 const connectionStatusEl = document.getElementById('connection-status');
                 const espConnectionStatusEl = document.getElementById('esp-connection-status');
+                const wifiSignalEl = document.getElementById('wifi-signal-status');
+                const wifiSignalTextEl = document.getElementById('wifi-signal-text');
                 const logContainerEl = document.getElementById('log-container');
                 const setTimerBtn = document.getElementById('set-timer-btn');
                 const onTimeInput = document.getElementById('on-time');
@@ -2235,6 +2304,7 @@
                     client.subscribe(room_name_topic_wildcard);
                     client.subscribe(light_config_timer_topic);
                     client.subscribe(esp_status_topic);
+                    client.subscribe(esp_wifi_signal_topic);
                     client.subscribe(analytics_topic); // Subscribe to analytics data
                     console.log("MQTT: Subscriptions sent.");
 
@@ -2405,6 +2475,11 @@
                             showToast("ESP device disconnected.", "error");
                         }
                     }
+                    // Handle WiFi signal strength updates
+                    else if (topic === esp_wifi_signal_topic) {
+                        const rssi = parseInt(payload);
+                        updateWiFiSignalIndicator(rssi);
+                    }
                     // Handle analytics data updates
                     else if (topic === analytics_topic) {
                         try {
@@ -2483,12 +2558,6 @@
                         const isON = (status === "ON");
                         lightToggleEl.checked = isON;
                         
-                        // Track analytics when device state changes
-                        const appliance = appliances.find(a => a.id == lightNumber);
-                        if (appliance && typeof trackDeviceToggle === 'function') {
-                            trackDeviceToggle(appliance.name, isON);
-                        }
-                        
                         // Update badge
                         if (isON) {
                             cardEl.classList.add("card-on");
@@ -2521,6 +2590,67 @@
                 
                 // Debounced dashboard update to prevent excessive recalculations
                 const debouncedDashboardUpdate = debounce(updateDashboardOverview, 300);
+
+                // WiFi Signal Strength Indicator (Phone-style bars)
+                function updateWiFiSignalIndicator(rssi) {
+                    const bars = wifiSignalEl.querySelectorAll('.wifi-bar');
+                    const wifiText = wifiSignalTextEl;
+                    
+                    let signalStrength = 0; // 0-4 bars
+                    let colorClasses = [];
+                    let textClasses = [];
+                    let textLabel = '';
+                    
+                    // Determine signal strength and colors
+                    if (rssi >= -50) {
+                        signalStrength = 4; // Excellent - 4 bars
+                        colorClasses = ['bg-green-500'];
+                        textClasses = ['text-xs', 'font-semibold', 'text-green-500'];
+                        textLabel = 'WiFi';
+                    } else if (rssi >= -60) {
+                        signalStrength = 3; // Good - 3 bars
+                        colorClasses = ['bg-green-400'];
+                        textClasses = ['text-xs', 'font-semibold', 'text-green-400'];
+                        textLabel = 'WiFi';
+                    } else if (rssi >= -70) {
+                        signalStrength = 2; // Fair - 2 bars
+                        colorClasses = ['bg-yellow-500'];
+                        textClasses = ['text-xs', 'font-semibold', 'text-yellow-500'];
+                        textLabel = 'WiFi';
+                    } else if (rssi >= -80) {
+                        signalStrength = 1; // Weak - 1 bar
+                        colorClasses = ['bg-orange-500'];
+                        textClasses = ['text-xs', 'font-semibold', 'text-orange-500'];
+                        textLabel = 'WiFi';
+                    } else {
+                        signalStrength = 1; // Poor - 1 bar
+                        colorClasses = ['bg-red-500'];
+                        textClasses = ['text-xs', 'font-semibold', 'text-red-500'];
+                        textLabel = 'WiFi';
+                    }
+                    
+                    // Update bars (fill from left to right)
+                    bars.forEach((bar, index) => {
+                        // Remove all color classes
+                        bar.className = 'wifi-bar w-1 rounded-sm transition-all duration-300';
+                        
+                        if (index < signalStrength) {
+                            // Active bar - colored
+                            colorClasses.forEach(cls => bar.classList.add(cls));
+                        } else {
+                            // Inactive bar - gray
+                            bar.classList.add('bg-gray-300');
+                        }
+                        
+                        // Set heights (25%, 50%, 75%, 100%)
+                        bar.style.height = `${(index + 1) * 25}%`;
+                    });
+                    
+                    // Update text with proper class list
+                    wifiText.className = textClasses.join(' ');
+                    wifiText.textContent = textLabel;
+                    wifiSignalEl.title = `WiFi Signal: ${rssi} dBm`;
+                }
 
                 function addLog(logText) {
                     const timestamp = new Date().toLocaleTimeString();
@@ -2753,6 +2883,12 @@
 
                         const state = checkbox.checked ? "ON" : "OFF";
                         publishMessage(`homeautomation/project/light/${lightNum}/set`, state, false);
+                        
+                        // Track analytics for manual toggle
+                        const appliance = appliances.find(a => a.id == lightNum);
+                        if (appliance && typeof trackDeviceToggle === 'function') {
+                            trackDeviceToggle(appliance.name, checkbox.checked);
+                        }
                     }
 
                     const setTimerBtn = event.target.closest('.set-individual-timer-btn');
@@ -2956,9 +3092,6 @@
 
                 // --- DATA VISUALIZATION: Charts & Analytics (Initialize early) ---
                 
-                // MQTT topics for analytics
-                const analytics_topic = "home/analytics";
-                
                 // Initialize tracking data dynamically based on actual appliances
                 let usageData = {};
                 
@@ -2973,20 +3106,6 @@
                 };
                 
                 let hourlyActivity = Array(24).fill(0); // Track activity by hour
-                
-                // Add some initial demo data so charts are visible (will be overwritten by MQTT data)
-                if (Object.keys(usageData).length > 0) {
-                    Object.keys(usageData).forEach((name, index) => {
-                        usageData[name].onTime = (index + 1) * 5; // Demo: 5, 10, 15, 20 minutes
-                        usageData[name].switches = (index + 1) * 2; // Demo: 2, 4, 6, 8 switches
-                    });
-                    // Add some demo hourly activity
-                    [8, 9, 12, 13, 14, 18, 19, 20].forEach(hour => {
-                        hourlyActivity[hour] = Math.floor(Math.random() * 10) + 1;
-                    });
-                    yesterdayData.totalSwitches = 15;
-                    yesterdayData.avgOnTime = 12;
-                }
                 
                 console.log("Analytics initialized with devices:", Object.keys(usageData));
                 console.log("Initial usage data:", usageData);
@@ -3278,12 +3397,20 @@
                 }
                 
                 function updateCharts() {
-                    // Only update if we're on the analytics page to save resources
+                    // Check if charts exist first
+                    if (!pieChart || !barChart) {
+                        console.log("Charts not initialized yet");
+                        return;
+                    }
+                    
+                    // Only skip update if we're on a different page (but still update on analytics page)
                     const analyticsPage = document.getElementById('page-analytics');
                     if (analyticsPage && analyticsPage.classList.contains('hidden')) {
                         console.log("Analytics page hidden, skipping chart update");
                         return;
                     }
+                    
+                    console.log("Updating charts with data...");
                     
                     // Use requestAnimationFrame for smooth updates
                     requestAnimationFrame(() => {
@@ -3300,6 +3427,8 @@
                         
                         // Update comparison stats
                         updateComparisonStats();
+                        
+                        console.log("Charts updated successfully");
                     });
                 }
                 
@@ -3368,25 +3497,12 @@
                     }
                 }, 1000);
                 
-                // Hook into existing toggle event listeners to track usage
-                const originalToggleHandler = document.getElementById('light-card-container');
-                if (originalToggleHandler) {
-                    originalToggleHandler.addEventListener('change', (e) => {
-                        if (e.target.classList.contains('toggle-checkbox')) {
-                            const lightNum = e.target.dataset.lightNum;
-                            const appliance = appliances.find(a => a.id == lightNum);
-                            if (appliance) {
-                                trackDeviceToggle(appliance.name, e.target.checked);
-                            }
-                        }
-                    });
-                }
-
                 // --- PAGE NAVIGATION ---
                 const navTabs = document.querySelectorAll('.nav-tab');
                 const pages = {
                     'dashboard': document.getElementById('page-dashboard'),
-                    'analytics': document.getElementById('page-analytics')
+                    'analytics': document.getElementById('page-analytics'),
+                    'logs': document.getElementById('page-logs')
                 };
                 
                 function switchPage(pageName) {
@@ -3408,6 +3524,13 @@
                             tab.classList.remove('active');
                         }
                     });
+                    
+                    // Update charts when switching to analytics page
+                    if (pageName === 'analytics' && typeof updateCharts === 'function') {
+                        setTimeout(() => {
+                            updateCharts();
+                        }, 100);
+                    }
                 }
                 
                 // Add click listeners to nav tabs
@@ -3419,6 +3542,52 @@
                 
                 // Initialize with dashboard page
                 switchPage('dashboard');
+
+                // Clear Logs Button Handler
+                document.getElementById('clear-logs-btn').addEventListener('click', () => {
+                    if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
+                        logEntries.length = 0; // Clear array
+                        renderLog();
+                        updateLogStats();
+                        showToast("All logs cleared", "success");
+                        addLog("System: Logs cleared by user");
+                    }
+                });
+                
+                // Export Logs Button Handler
+                document.getElementById('export-logs-btn').addEventListener('click', () => {
+                    if (logEntries.length === 0) {
+                        showToast("No logs to export", "warning");
+                        return;
+                    }
+                    
+                    const logText = logEntries.map(entry => `[${entry.time}] [${entry.type.toUpperCase()}] ${entry.text}`).join('\n');
+                    const blob = new Blob([logText], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `smart-home-logs-${new Date().toISOString().split('T')[0]}.txt`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showToast("Logs exported successfully", "success");
+                });
+                
+                // Update log statistics
+                function updateLogStats() {
+                    document.getElementById('total-logs-count').textContent = logEntries.length;
+                    document.getElementById('on-logs-count').textContent = logEntries.filter(e => e.type === 'on').length;
+                    document.getElementById('off-logs-count').textContent = logEntries.filter(e => e.type === 'off').length;
+                    document.getElementById('voice-logs-count').textContent = logEntries.filter(e => e.type === 'voice').length;
+                }
+                
+                // Update renderLog to also update stats
+                const originalRenderLog = renderLog;
+                renderLog = function() {
+                    originalRenderLog();
+                    updateLogStats();
+                };
 
                 // Reset Analytics Button Handler
                 document.getElementById('reset-analytics-btn').addEventListener('click', () => {

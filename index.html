@@ -17,26 +17,78 @@
         }
     </script>
     <style>
-        /* Flame alarm banner */
+        /* Enhanced Fire Alarm Banner with Professional Animation */
         #flame-alarm-banner {
-            animation: pulse-bg 1s infinite;
-            backdrop-filter: blur(8px);
-            box-shadow: 0 4px 20px rgba(220, 38, 38, 0.5);
+            animation: pulse-bg 1s infinite, slide-down 0.5s ease-out;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 8px 32px rgba(220, 38, 38, 0.8), 
+                        0 0 60px rgba(239, 68, 68, 0.6),
+                        inset 0 -2px 10px rgba(0, 0, 0, 0.3);
+            border-bottom: 3px solid rgba(255, 255, 255, 0.3);
+            z-index: 100;
+            position: relative;
         }
+        
+        #flame-alarm-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.3), 
+                transparent);
+            animation: shine 2s infinite;
+        }
+        
         @keyframes pulse-bg {
-            0%, 100% { background-color: #dc2626; } /* red-600 */
-            50% { background-color: #ef4444; } /* red-500 */
+            0%, 100% { 
+                background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+                transform: scale(1);
+            }
+            50% { 
+                background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                transform: scale(1.02);
+            }
         }
-        /* Fire icon animation */
+        
+        @keyframes slide-down {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes shine {
+            0% { left: -100%; }
+            50%, 100% { left: 100%; }
+        }
+        
+        /* Enhanced Fire Icon Animation */
         @keyframes shake {
-            0%, 100% { transform: translate(0, 0) rotate(0); }
-            25% { transform: translate(1px, -1px) rotate(-2deg); }
-            50% { transform: translate(-1px, 1px) rotate(2deg); }
-            75% { transform: translate(1px, 1px) rotate(-2deg); }
+            0%, 100% { transform: translate(0, 0) rotate(0) scale(1); }
+            10% { transform: translate(-2px, -2px) rotate(-3deg) scale(1.1); }
+            20% { transform: translate(2px, 2px) rotate(3deg) scale(1.15); }
+            30% { transform: translate(-2px, 2px) rotate(-3deg) scale(1.1); }
+            40% { transform: translate(2px, -2px) rotate(3deg) scale(1.15); }
+            50% { transform: translate(-1px, -1px) rotate(-2deg) scale(1.2); }
+            60% { transform: translate(1px, 1px) rotate(2deg) scale(1.15); }
+            70% { transform: translate(-1px, 1px) rotate(-1deg) scale(1.1); }
+            80% { transform: translate(1px, -1px) rotate(1deg) scale(1.05); }
+            90% { transform: translate(-1px, 0) rotate(-1deg) scale(1.02); }
         }
+        
         .fire-icon-active {
-            display: flex !important;
-            animation: shake 0.3s infinite;
+            display: inline-flex !important;
+            animation: shake 0.5s infinite;
+            filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.8))
+                    drop-shadow(0 0 20px rgba(245, 158, 11, 0.6));
         }
 
         /* Theme toggle button styling */
@@ -64,6 +116,20 @@
         * {
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Prevent flickering and improve performance */
+        body, main, .card {
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            -webkit-perspective: 1000;
+            perspective: 1000;
+            transform: translate3d(0, 0, 0);
+        }
+        
+        /* Optimize repaints */
+        .toggle-switch, .btn, .nav-tab {
+            will-change: transform;
         }
         
         body {
@@ -777,7 +843,7 @@
             }
             
             .card {
-                backdrop-filter: blur(8px) !important;
+                backdrop-filter: none !important;
                 transition: none !important;
             }
             
@@ -793,13 +859,17 @@
                 transition: transform 0.1s ease !important;
             }
             
+            .btn::before {
+                display: none !important;
+            }
+            
             .toggle-track,
             .toggle-thumb {
                 transition: all 0.2s ease !important;
             }
             
             input, select, textarea {
-                transition: none !important;
+                transition: border-color 0.15s ease !important;
             }
             
             /* Reduce backdrop blur for better performance */
@@ -808,6 +878,42 @@
             .chart-container {
                 backdrop-filter: none !important;
             }
+            
+            /* Disable icon animations on mobile */
+            .icon-on[data-type="light"] .appliance-icon,
+            .icon-on[data-type="other"] .appliance-icon {
+                animation: none !important;
+            }
+            
+            .icon-on[data-type="fan"] .appliance-icon {
+                animation: spin 1.5s linear infinite !important;
+            }
+            
+            /* Simplify fire alarm animation on mobile */
+            #flame-alarm-banner {
+                animation: pulse-bg-simple 1.5s infinite !important;
+                backdrop-filter: none !important;
+            }
+            
+            #flame-alarm-banner::before {
+                display: none !important;
+            }
+            
+            .fire-icon-active {
+                animation: shake-simple 0.8s infinite !important;
+            }
+        }
+        
+        /* Simplified animations for mobile */
+        @keyframes pulse-bg-simple {
+            0%, 100% { background: #dc2626; }
+            50% { background: #ef4444; }
+        }
+        
+        @keyframes shake-simple {
+            0%, 100% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            75% { transform: rotate(5deg); }
         }
 
         /* Improved color contrast for readability */
@@ -913,9 +1019,28 @@
     </style>
 </head>
 <body class="dark:bg-slate-900 bg-slate-50 transition-colors duration-300">
-    <!-- Flame Alarm Banner -->
-    <div id="flame-alarm-banner" class="hidden fixed top-0 left-0 right-0 z-[100] bg-red-600 text-white text-center p-4 text-2xl font-bold">
-        &#x1F525; FIRE DETECTED! &#x1F525;
+    <!-- Enhanced Fire Alarm Banner with Professional Design -->
+    <div id="flame-alarm-banner" class="hidden fixed top-0 left-0 right-0 z-[100] text-white text-center py-5 px-4">
+        <div class="flex items-center justify-center gap-3 sm:gap-4">
+            <div class="fire-icon-active hidden">
+                <svg class="w-8 h-8 sm:w-10 sm:h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 23a7.5 7.5 0 0 1-5.138-12.963C8.204 8.774 11.5 6.5 11 1.5c6 4 9 8 3 14 1 0 2.5 0 5-2.47.27.773.5 1.604.5 2.47A7.5 7.5 0 0 1 12 23z"/>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <div class="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-wide mb-1 animate-pulse">
+                    🔥 FIRE ALARM TRIGGERED! 🔥
+                </div>
+                <div class="text-sm sm:text-base font-semibold opacity-90">
+                    Immediate action required - Check all areas
+                </div>
+            </div>
+            <div class="fire-icon-active hidden">
+                <svg class="w-8 h-8 sm:w-10 sm:h-10 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 23a7.5 7.5 0 0 1-5.138-12.963C8.204 8.774 11.5 6.5 11 1.5c6 4 9 8 3 14 1 0 2.5 0 5-2.47.27.773.5 1.604.5 2.47A7.5 7.5 0 0 1 12 23z"/>
+                </svg>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Notification Container -->
@@ -1071,7 +1196,7 @@
         <svg class="w-6 h-6 text-indigo-700 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
     </button>
 
-    <div class="flex items-center justify-center min-h-screen p-4">
+    <div class="flex items-center justify-center min-h-screen p-4 sm:p-6 lg:p-8">
     <!-- ================================================== -->
     <!-- ==           AUTHENTICATION CONTAINER           == -->
     <!-- ================================================== -->
@@ -1115,7 +1240,7 @@
     <!-- ================================================== -->
     <!-- ==             MAIN APP CONTAINER             == -->
     <!-- ================================================== -->
-    <main id="main-app" class="hidden w-full max-w-2xl mx-auto card p-6 sm:p-8 space-y-8">
+    <main id="main-app" class="hidden w-full max-w-2xl lg:max-w-5xl xl:max-w-6xl mx-auto card p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
 
         <!-- Enhanced Header Section -->
         <div class="flex flex-col sm:flex-row justify-between items-center gap-4 pb-6 border-b border-gray-200 dark:border-gray-700">
@@ -1182,9 +1307,15 @@
         <div id="dashboard-overview" class="mb-6">
              <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-bold section-title">Dashboard</h2>
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2">
+                    <button id="test-alarm-btn" title="Test Fire Alarm" class="btn p-2 h-10 px-4 flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 dark:bg-orange-600 dark:hover:bg-orange-700 text-xs">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 23a7.5 7.5 0 0 1-5.138-12.963C8.204 8.774 11.5 6.5 11 1.5c6 4 9 8 3 14 1 0 2.5 0 5-2.47.27.773.5 1.604.5 2.47A7.5 7.5 0 0 1 12 23z"/>
+                        </svg>
+                        Test
+                    </button>
                     <button id="stop-alarm-btn" title="Stop and Clear Alarm" class="btn p-2 h-10 w-10 flex items-center justify-center bg-gray-400 dark:bg-gray-600 cursor-not-allowed" disabled>
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a5 5 0 015-5"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 15 7.5 15 9c2 0 2.986-2.5 2.986-2.5A8 8 0 0117.657 18.657z"/></svg>
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                     <button id="refresh-btn" title="Refresh" class="btn p-2 h-10 w-10 flex items-center justify-center">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5M20 20v-5h-5M4 4l5 5M20 20l-5-5"></path></svg>
@@ -1193,7 +1324,7 @@
             </div>
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 text-center">
                 <!-- Total Devices -->
-                <div class="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800/70 dark:to-gray-900/60 p-4 rounded-xl shadow-inner border border-gray-300 dark:border-indigo-500/20 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 dark:hover:border-indigo-500/40">
+                <div class="bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800/70 dark:to-gray-900/60 p-4 lg:p-5 rounded-xl shadow-inner border border-gray-300 dark:border-indigo-500/20 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 dark:hover:border-indigo-500/40">
                     <p class="text-xs font-medium text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Total</p>
                     <p id="dashboard-total-lights" class="text-3xl font-bold bg-gradient-to-br from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">0</p>
                 </div>
@@ -1248,7 +1379,7 @@
         <h1 id="appliance-name" class="text-3xl sm:text-4xl font-extrabold text-center bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent leading-tight">Smart Device Control</h1>
 
             <!-- Voice Control Section -->
-            <div class="bg-gradient-to-br from-indigo-100/60 to-purple-100/60 dark:from-indigo-900/15 dark:to-purple-900/15 rounded-2xl p-6 flex flex-col items-center shadow-lg border border-indigo-200 dark:border-indigo-800/30 backdrop-blur-sm">
+            <div class="bg-gradient-to-br from-indigo-100/60 to-purple-100/60 dark:from-indigo-900/15 dark:to-purple-900/15 rounded-2xl p-4 sm:p-6 flex flex-col items-center shadow-lg border border-indigo-200 dark:border-indigo-800/30 backdrop-blur-sm">
                 <div class="w-full flex flex-col items-center">
                     <div class="flex items-center justify-center w-full mb-3">
                         <div class="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 rounded-xl mr-3 shadow-lg">
@@ -1290,7 +1421,7 @@
             </div>
 
             <!-- Light Control Cards Container -->
-            <div id="light-card-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-2 gap-4">
+            <div id="light-card-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-5">
                 <!-- Light Groups: Living Room, Bedroom -->
                 <div id="group-living" class="mb-4">
                     <div class="flex items-center gap-2 mb-2">
@@ -1313,7 +1444,7 @@
             </div>
 
             <!-- Automatic Task Timer -->
-            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-6">
+            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 sm:p-6">
                 <h2 class="section-title mb-4 text-center">Automatic Timer (All Lights)</h2>
                 <div id="active-timer-display" class="hidden bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 p-3 rounded-lg mb-4 flex justify-between items-center">
                     <div>
@@ -1322,7 +1453,7 @@
                     </div>
                     <button id="clear-timer-btn" class="btn text-sm font-semibold text-red-600 dark:text-red-400 hover:underline">Clear</button>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label for="on-time" class="block text-sm font-medium">Turn ON Time</label>
                         <input type="time" id="on-time" class="input mt-1 block w-full" />
@@ -1336,10 +1467,10 @@
             </div>
             
             <!-- Activity Log -->
-            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-6">
+            <div class="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 sm:p-6">
                 <h2 class="section-title mb-4 text-center">Activity Log</h2>
-                <div class="flex items-center gap-2 mb-2">
-                    <input id="log-search" type="text" placeholder="Search log..." class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm w-2/3" />
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-2">
+                    <input id="log-search" type="text" placeholder="Search log..." class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm flex-1" />
                     <select id="log-filter" class="px-2 py-1 rounded border border-gray-300 dark:border-gray-600 text-sm">
                         <option value="all">All</option>
                         <option value="on">ON</option>
@@ -1349,7 +1480,7 @@
                         <option value="system">System</option>
                     </select>
                 </div>
-                <div id="log-container" class="activity-log h-40 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-xs rounded-md p-3 overflow-y-auto space-y-1"></div>
+                <div id="log-container" class="activity-log h-48 lg:h-56 bg-gray-100 dark:bg-black/50 text-gray-800 dark:text-gray-300 font-mono text-xs rounded-md p-3 overflow-y-auto space-y-1"></div>
             </div>
         </div>
         <!-- End Dashboard Page -->
@@ -1379,7 +1510,7 @@
                 </div>
                 
                 <!-- Charts Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <!-- Pie Chart: Device Usage Distribution -->
                     <div class="chart-container">
                         <h3 class="text-sm font-semibold text-center mb-3 text-gray-700 dark:text-gray-300">Device ON Time Distribution</h3>
@@ -1407,7 +1538,7 @@
                 </div>
 
                 <!-- Comparison: Today vs Yesterday -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
                         <h4 class="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">Today's Usage</h4>
                         <div class="space-y-1 text-sm">
@@ -1472,44 +1603,168 @@
         (function() {
             // --- ALARM SYSTEM LOGIC ---
             let isAlarmPlaying = false;
-            const alarmUtterance = new SpeechSynthesisUtterance("Alert! Fire detected!");
-            alarmUtterance.lang = 'en-US';
-            alarmUtterance.pitch = 1.5;
-            alarmUtterance.rate = 1.2;
-
-            function loopAlarm() {
-                if (isAlarmPlaying) {
-                    window.speechSynthesis.speak(alarmUtterance);
+            let alarmSoundInterval = null;
+            let speechAttempts = 0;
+            const maxSpeechAttempts = 3;
+            
+            // Beep sound generator using Web Audio API (more reliable than speech)
+            function createAlarmBeep() {
+                try {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.value = 1000; // 1000 Hz beep
+                    oscillator.type = 'square';
+                    
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                    
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                    
+                    return true;
+                } catch (error) {
+                    console.error("Audio beep failed:", error);
+                    return false;
                 }
             }
-            alarmUtterance.onend = loopAlarm; // Loop the speech
+            
+            // Try speech synthesis with fallback
+            function playAlarmSpeech() {
+                if (!window.speechSynthesis) {
+                    console.warn("Speech synthesis not available");
+                    return false;
+                }
+                
+                try {
+                    // Cancel any previous speech
+                    window.speechSynthesis.cancel();
+                    
+                    const utterance = new SpeechSynthesisUtterance("Fire Alert! Fire detected!");
+                    utterance.lang = 'en-US';
+                    utterance.pitch = 1.5;
+                    utterance.rate = 1.3;
+                    utterance.volume = 1.0;
+                    
+                    utterance.onerror = (event) => {
+                        console.error("Speech synthesis error:", event);
+                        speechAttempts++;
+                        if (speechAttempts < maxSpeechAttempts) {
+                            setTimeout(() => playAlarmSpeech(), 1000);
+                        }
+                    };
+                    
+                    utterance.onend = () => {
+                        console.log("Speech completed");
+                    };
+                    
+                    window.speechSynthesis.speak(utterance);
+                    return true;
+                } catch (error) {
+                    console.error("Speech synthesis failed:", error);
+                    return false;
+                }
+            }
+            
+            // Main alarm sound loop
+            function playAlarmSound() {
+                if (!isAlarmPlaying) return;
+                
+                // Try beep first (more reliable)
+                const beepSuccess = createAlarmBeep();
+                
+                // Also try speech (every 3 beeps)
+                if (Math.random() > 0.66) {
+                    playAlarmSpeech();
+                }
+                
+                if (!beepSuccess) {
+                    console.warn("Alarm beep failed, trying speech only");
+                    playAlarmSpeech();
+                }
+            }
 
             function startAlarm() {
                 console.log("startAlarm called, isAlarmPlaying:", isAlarmPlaying);
-                if (isAlarmPlaying) return;
+                if (isAlarmPlaying) {
+                    console.log("Alarm already playing, skipping");
+                    return;
+                }
+                
                 isAlarmPlaying = true;
-                document.getElementById('flame-alarm-banner').classList.remove('hidden');
+                speechAttempts = 0;
+                
+                const banner = document.getElementById('flame-alarm-banner');
+                banner.classList.remove('hidden');
+                
+                // Show fire icons with animation
+                banner.querySelectorAll('.fire-icon-active').forEach(icon => {
+                    icon.classList.remove('hidden');
+                });
+                
                 const stopBtn = document.getElementById('stop-alarm-btn');
                 console.log("Enabling stop button:", stopBtn);
                 stopBtn.disabled = false;
                 stopBtn.classList.remove('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
                 stopBtn.classList.add('bg-red-600', 'dark:bg-red-700', 'hover:bg-red-700', 'dark:hover:bg-red-800');
-                // Ensure speech synthesis is ready and start
-                window.speechSynthesis.cancel(); // Cancel any previous speech
-                loopAlarm();
-                console.log("Alarm started, button should be enabled");
+                
+                // Start alarm sound immediately
+                playAlarmSound();
+                
+                // Set interval for continuous alarm (every 2 seconds)
+                if (alarmSoundInterval) {
+                    clearInterval(alarmSoundInterval);
+                }
+                alarmSoundInterval = setInterval(() => {
+                    playAlarmSound();
+                }, 2000);
+                
+                console.log("Alarm started successfully with sound");
+                
+                // Vibrate if supported (mobile)
+                if (navigator.vibrate) {
+                    navigator.vibrate([500, 200, 500, 200, 500]);
+                }
             }
 
             function stopAlarm() {
                 console.log("stopAlarm called, isAlarmPlaying:", isAlarmPlaying);
                 isAlarmPlaying = false;
-                document.getElementById('flame-alarm-banner').classList.add('hidden');
+                
+                // Clear alarm sound interval
+                if (alarmSoundInterval) {
+                    clearInterval(alarmSoundInterval);
+                    alarmSoundInterval = null;
+                }
+                
+                // Stop any ongoing speech
+                if (window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                }
+                
+                const banner = document.getElementById('flame-alarm-banner');
+                banner.classList.add('hidden');
+                
+                // Hide fire icons
+                banner.querySelectorAll('.fire-icon-active').forEach(icon => {
+                    icon.classList.add('hidden');
+                });
+                
                 const stopBtn = document.getElementById('stop-alarm-btn');
                 stopBtn.disabled = true;
                 stopBtn.classList.add('bg-gray-400', 'dark:bg-gray-600', 'cursor-not-allowed');
                 stopBtn.classList.remove('bg-red-600', 'dark:bg-red-700', 'hover:bg-red-700', 'dark:hover:bg-red-800');
-                window.speechSynthesis.cancel();
+                
                 console.log("Alarm stopped successfully");
+                
+                // Stop vibration
+                if (navigator.vibrate) {
+                    navigator.vibrate(0);
+                }
             }
 
             // --- Enhanced Activity Log Logic ---
@@ -1682,6 +1937,8 @@
                     authContainer.classList.add('hidden');
                     mainAppContainer.classList.remove('hidden');
                     mainControlsHeader.classList.remove('hidden');
+                    isManualDisconnect = false;
+                    reconnectAttempts = 0; // Reset reconnect attempts
                     // Connect to MQTT only after successful login
                     connectMqtt();
                 };
@@ -1691,15 +1948,25 @@
                     authContainer.classList.remove('hidden');
                     mainAppContainer.classList.add('hidden');
                     mainControlsHeader.classList.add('hidden');
+                    isManualDisconnect = true;
                     if (client && client.isConnected()) {
                         client.disconnect();
+                    }
+                    // Clear reconnect timer
+                    if (reconnectTimer) {
+                        clearTimeout(reconnectTimer);
+                        reconnectTimer = null;
                     }
                 };
 
                 // Attach logout function to both buttons
                 logoutBtnDrawer.onclick = showAuth;
                 logoutBtnMain.onclick = showAuth;
-                refreshBtn.onclick = reconnect;
+                refreshBtn.onclick = () => {
+                    reconnectAttempts = 0;
+                    isManualDisconnect = false;
+                    reconnect();
+                };
 
                 // Show/Hide Password Logic
                 togglePasswordBtn.addEventListener('click', () => {
@@ -1843,6 +2110,13 @@
                 const brokerPort = 8884;
                 const clientId = "WebAppClient_" + new Date().getTime();
                 const flame_alarm_topic = "homeautomation/project/alarm/flame";
+                
+                // Auto-reconnection settings
+                let reconnectAttempts = 0;
+                let maxReconnectAttempts = 10;
+                let reconnectDelay = 1000; // Start with 1 second
+                let reconnectTimer = null;
+                let isManualDisconnect = false;
 
                 // --- TOPICS FOR SYNCING STATE ---
                 const light_name_topic_wildcard = "homeautomation/project/light/+/name";
@@ -1885,36 +2159,71 @@
                         console.log("Already connected to MQTT.");
                         return;
                     }
+                    
+                    // Clear any existing reconnect timer
+                    if (reconnectTimer) {
+                        clearTimeout(reconnectTimer);
+                        reconnectTimer = null;
+                    }
+                    
                     client = new Paho.Client(brokerHost, brokerPort, clientId);
                     client.onConnectionLost = onConnectionLost;
                     client.onMessageArrived = onMessageArrived;
+                    
+                    const statusText = connectionStatusEl.querySelector('p');
+                    statusText.textContent = "Connecting...";
+                    
                     client.connect({
-                        timeout: 3,
+                        timeout: 10,
                         useSSL: true,
+                        keepAliveInterval: 30, // Send keepalive every 30 seconds
+                        cleanSession: false, // Maintain session to get retained messages
                         onSuccess: onConnect,
                         onFailure: onFailure,
                     });
                 }
                 
                 function reconnect() {
-                    addLog("Attempting to reconnect...");
-                    const statusText = connectionStatusEl.querySelector('p');
-                    statusText.textContent = "Reconnecting...";
-                    if (client && client.isConnected()) {
-                        client.disconnect();
+                    if (isManualDisconnect) {
+                        console.log("Manual disconnect - not auto-reconnecting");
+                        return;
                     }
-                    // A small delay to ensure disconnection before reconnecting
-                    setTimeout(connectMqtt, 500);
+                    
+                    if (reconnectAttempts >= maxReconnectAttempts) {
+                        addLog("Max reconnection attempts reached. Please refresh the page.");
+                        showToast("Connection lost. Please refresh the page.", "error");
+                        return;
+                    }
+                    
+                    reconnectAttempts++;
+                    // Exponential backoff: 1s, 2s, 4s, 8s, max 30s
+                    const delay = Math.min(reconnectDelay * Math.pow(2, reconnectAttempts - 1), 30000);
+                    
+                    addLog(`Reconnecting in ${delay/1000}s (attempt ${reconnectAttempts}/${maxReconnectAttempts})...`);
+                    const statusText = connectionStatusEl.querySelector('p');
+                    statusText.textContent = `Retry ${reconnectAttempts}`;
+                    
+                    reconnectTimer = setTimeout(() => {
+                        if (client && client.isConnected()) {
+                            client.disconnect();
+                        }
+                        connectMqtt();
+                    }, delay);
                 }
                 
                 // --- MQTT Functions ---
                 function onConnect() {
                     console.log("MQTT onConnect: Successfully connected to broker.");
+                    
+                    // Reset reconnection counters on successful connection
+                    reconnectAttempts = 0;
+                    
                     const statusDot = connectionStatusEl.querySelector('div');
                     const statusText = connectionStatusEl.querySelector('p');
                     statusDot.classList.replace('bg-red-500', 'bg-green-500');
                     statusDot.classList.remove('animate-pulse');
                     statusText.classList.replace('text-red-500', 'text-green-500');
+                    statusText.textContent = "UI";
                     
                     // Subscribe to all topics
                     console.log("MQTT: Subscribing to topics...");
@@ -1929,19 +2238,41 @@
                     client.subscribe(analytics_topic); // Subscribe to analytics data
                     console.log("MQTT: Subscriptions sent.");
 
-                    addLog("Web UI connected. Requesting initial status...");
-                    for (let i = 1; i <= NUM_LIGHTS; i++) {
-                        publishMessage(`homeautomation/project/light/${i}/getStatus`, "GET", false);
-                    }
-                    publishMessage(`homeautomation/project/esp/getStatus`, "GET", false);
+                    addLog("Web UI connected successfully.");
+                    showToast("Connected to server", "success");
+                    
+                    // CRITICAL: Small delay to ensure subscription is registered, then request fire alarm status
+                    setTimeout(() => {
+                        console.log("Requesting fire alarm status...");
+                        // Since we're using cleanSession: false, broker will send retained message
+                        // But let's also explicitly request from ESP
+                        publishMessage("homeautomation/project/alarm/flame/get", "GET", false);
+                    }, 500);
+                    
+                    // Request initial status for all devices
+                    setTimeout(() => {
+                        for (let i = 1; i <= NUM_LIGHTS; i++) {
+                            publishMessage(`homeautomation/project/light/${i}/getStatus`, "GET", false);
+                        }
+                        publishMessage(`homeautomation/project/esp/getStatus`, "GET", false);
+                    }, 1000);
+                    
                     updateDashboardOverview();
                 }
 
                 function onFailure(message) {
+                    const statusDot = connectionStatusEl.querySelector('div');
                     const statusText = connectionStatusEl.querySelector('p');
+                    statusDot.classList.replace('bg-green-500', 'bg-red-500');
+                    statusDot.classList.add('animate-pulse');
+                    statusText.classList.replace('text-green-500', 'text-red-500');
                     statusText.textContent = "UI Failed";
+                    
                     console.error("MQTT onFailure: Connection failed: ", message.errorMessage);
-                    addLog(`MQTT connection failed: ${message.errorMessage}`);
+                    addLog(`Connection failed: ${message.errorMessage}`);
+                    
+                    // Auto-reconnect on failure
+                    reconnect();
                 }
 
                 function onConnectionLost(responseObject) {
@@ -1952,8 +2283,13 @@
                         statusDot.classList.add('animate-pulse');
                         statusText.classList.replace('text-green-500', 'text-red-500');
                         statusText.textContent = "UI Lost";
+                        
                         console.error("MQTT onConnectionLost: Connection lost: ", responseObject.errorMessage);
-                        addLog(`MQTT connection lost: ${responseObject.errorMessage}`);
+                        addLog(`Connection lost: ${responseObject.errorMessage}`);
+                        showToast("Connection lost. Reconnecting...", "warning");
+                        
+                        // Auto-reconnect when connection is lost
+                        reconnect();
                     }
                 }
 
@@ -1968,13 +2304,34 @@
                         addLog(payload);
                     } 
                     else if (topic === flame_alarm_topic) {
-                        // Inverted logic: Flame sensor sends "1" or "DETECTED" when NO fire, empty/"0"/"CLEAR" when fire IS present
-                        if (payload === "CLEAR" || payload === "0" || payload === "") {
+                        // Fire alarm logic - inverted: "CLEAR"/"0"/"" means FIRE DETECTED
+                        // "DETECTED"/"1" means NO FIRE
+                        console.log(`Fire alarm status received: "${payload}" (Retained: ${isRetained})`);
+                        
+                        const isFire = (payload === "CLEAR" || payload === "0" || payload === "");
+                        
+                        if (isFire) {
+                            // FIRE DETECTED!
+                            console.log("🔥 FIRE DETECTED - Starting alarm");
                             startAlarm();
-                            addLog("CRITICAL: Flame alarm triggered!");
-                            showToast("FIRE DETECTED!", "error");
+                            
+                            if (!isRetained) {
+                                addLog("🚨 CRITICAL: Flame alarm triggered!");
+                                showToast("🔥 FIRE DETECTED!", "error");
+                            } else {
+                                addLog("⚠️ Fire alarm active (from previous detection)");
+                                showToast("Fire alarm was previously triggered", "error");
+                            }
+                        } else if (payload === "DETECTED" || payload === "1") {
+                            // NO FIRE detected from sensor
+                            console.log("✓ No fire detected by sensor");
+                            
+                            // Don't auto-stop alarm - only manual button press can stop it
+                            // This ensures user acknowledges the alarm
+                            if (!isAlarmPlaying && !isRetained) {
+                                console.log("Sensor reports no fire");
+                            }
                         }
-                        // Don't auto-stop alarm when fire vanishes - user must manually press stop button
                     }
                     // Handle individual light status updates
                     else if (topic.startsWith("homeautomation/project/light/") && topic.endsWith("/status")) {
@@ -2086,13 +2443,28 @@
 
                 function publishMessage(topic, payload, retained = false) {
                     if (!client || !client.isConnected()) {
-                        addLog("Cannot publish. Not connected to broker.");
+                        console.warn("Cannot publish. Not connected to broker.");
+                        showToast("Not connected. Reconnecting...", "warning");
+                        reconnect();
                         return;
                     }
                     const message = new Paho.Message(payload);
                     message.destinationName = topic;
                     message.retained = retained; // Set the retained flag
                     client.send(message);
+                }
+                
+                // Debounce helper function
+                function debounce(func, wait) {
+                    let timeout;
+                    return function executedFunction(...args) {
+                        const later = () => {
+                            clearTimeout(timeout);
+                            func(...args);
+                        };
+                        clearTimeout(timeout);
+                        timeout = setTimeout(later, wait);
+                    };
                 }
 
                 // --- UI Logic ---
@@ -2103,44 +2475,52 @@
                     const cardEl = document.getElementById(`card-${lightNumber}`);
                     if (!lightToggleEl || !statusBadgeEl || !iconContainerEl) return;
 
-                    // Remove pending animation as we now have a confirmed state
-                    cardEl.classList.remove("card-pending");
+                    // Batch DOM updates using requestAnimationFrame for smoother rendering
+                    requestAnimationFrame(() => {
+                        // Remove pending animation as we now have a confirmed state
+                        cardEl.classList.remove("card-pending");
 
-                    const isON = (status === "ON");
-                    lightToggleEl.checked = isON;
+                        const isON = (status === "ON");
+                        lightToggleEl.checked = isON;
+                        
+                        // Track analytics when device state changes
+                        const appliance = appliances.find(a => a.id == lightNumber);
+                        if (appliance && typeof trackDeviceToggle === 'function') {
+                            trackDeviceToggle(appliance.name, isON);
+                        }
+                        
+                        // Update badge
+                        if (isON) {
+                            cardEl.classList.add("card-on");
+                            statusBadgeEl.textContent = "ON";
+                            statusBadgeEl.classList.remove("bg-gray-300", "dark:bg-gray-700", "text-gray-700", "dark:text-gray-200");
+                            statusBadgeEl.classList.add("bg-green-400", "dark:bg-green-600", "text-white");
+                        } else if (status === "OFF") {
+                            cardEl.classList.remove("card-on");
+                            statusBadgeEl.textContent = "OFF";
+                            statusBadgeEl.classList.remove("bg-green-400", "dark:bg-green-600", "text-white");
+                            statusBadgeEl.classList.add("bg-red-400", "dark:bg-red-600", "text-white");
+                        } else {
+                            cardEl.classList.remove("card-on");
+                            statusBadgeEl.textContent = "Unknown";
+                            statusBadgeEl.classList.remove("bg-green-400", "dark:bg-green-600", "bg-red-400", "dark:bg-red-600", "text-white");
+                            statusBadgeEl.classList.add("bg-gray-300", "dark:bg-gray-700", "text-gray-700", "dark:text-gray-200");
+                        }
+                        
+                        // Animate icon for ON state
+                        if (isON) {
+                            iconContainerEl.classList.add("icon-on");
+                        } else {
+                            iconContainerEl.classList.remove("icon-on");
+                        }
+                    });
                     
-                    // Track analytics when device state changes
-                    const appliance = appliances.find(a => a.id == lightNumber);
-                    if (appliance && typeof trackDeviceToggle === 'function') {
-                        trackDeviceToggle(appliance.name, isON);
-                        console.log(`Analytics tracked: ${appliance.name} is now ${status}`);
-                    }
-                    
-                    // Update badge
-                    if (isON) {
-                        cardEl.classList.add("card-on");
-                        statusBadgeEl.textContent = "ON";
-                        statusBadgeEl.classList.remove("bg-gray-300", "dark:bg-gray-700", "text-gray-700", "dark:text-gray-200");
-                        statusBadgeEl.classList.add("bg-green-400", "dark:bg-green-600", "text-white");
-                    } else if (status === "OFF") {
-                        statusBadgeEl.textContent = "OFF";
-                        statusBadgeEl.classList.remove("bg-green-400", "dark:bg-green-600", "text-white");
-                        statusBadgeEl.classList.add("bg-red-400", "dark:bg-red-600", "text-white");
-                    } else {
-                        cardEl.classList.remove("card-on");
-                        statusBadgeEl.textContent = "Unknown";
-                        statusBadgeEl.classList.remove("bg-green-400", "dark:bg-green-600", "bg-red-400", "dark:bg-red-600", "text-white");
-                        statusBadgeEl.classList.add("bg-gray-300", "dark:bg-gray-700", "text-gray-700", "dark:text-gray-200");
-                    }
-                    // Animate icon for ON state
-                    if (isON) {
-                        iconContainerEl.classList.add("icon-on");
-                    } else {
-                        iconContainerEl.classList.remove("icon-on");
-                    }
-                    // Update the main dashboard overview whenever a light's UI changes
-                    updateDashboardOverview();
+                    // Update the main dashboard overview with debouncing
+                    debouncedDashboardUpdate();
                 }
+                
+                // Debounced dashboard update to prevent excessive recalculations
+                const debouncedDashboardUpdate = debounce(updateDashboardOverview, 300);
 
                 function addLog(logText) {
                     const timestamp = new Date().toLocaleTimeString();
@@ -2485,6 +2865,14 @@
                 if (sessionStorage.getItem('loggedInUser')) {
                     showMainApp();
                 }
+                
+                // Connection heartbeat - check every 60 seconds
+                setInterval(() => {
+                    if (!isManualDisconnect && (!client || !client.isConnected())) {
+                        console.log("Heartbeat: Connection lost, attempting reconnect");
+                        reconnect();
+                    }
+                }, 60000); // Check every 60 seconds
 
                 // --- DYNAMIC UI RENDERING ---
                 const ICONS = {
@@ -2549,9 +2937,21 @@
                     console.log("Stop alarm button CLICKED!");
                     e.preventDefault();
                     stopAlarm();
-                    // Publish "DETECTED" (no fire) instead of empty string to prevent retriggering
+                    // Publish "DETECTED" (no fire) as RETAINED to clear the alarm state on broker
                     publishMessage(flame_alarm_topic, "DETECTED", true);
-                    addLog("Alarm stopped and cleared by user.");
+                    addLog("✓ Alarm stopped and cleared by user.");
+                    showToast("Fire alarm cleared", "success");
+                });
+                
+                // Add test button for fire alarm
+                const testAlarmBtn = document.getElementById('test-alarm-btn');
+                testAlarmBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log("Test alarm button clicked");
+                    // Publish fire detected message as RETAINED
+                    publishMessage(flame_alarm_topic, "CLEAR", true);
+                    addLog("🧪 Test: Fire alarm triggered manually");
+                    showToast("Fire alarm test activated", "warning");
                 });
 
                 // --- DATA VISUALIZATION: Charts & Analytics (Initialize early) ---
@@ -2878,19 +3278,29 @@
                 }
                 
                 function updateCharts() {
-                    // Update pie chart with dynamic device data
-                    pieChart.data.datasets[0].data = appliances.map(a => usageData[a.name].onTime);
-                    pieChart.update();
+                    // Only update if we're on the analytics page to save resources
+                    const analyticsPage = document.getElementById('page-analytics');
+                    if (analyticsPage && analyticsPage.classList.contains('hidden')) {
+                        console.log("Analytics page hidden, skipping chart update");
+                        return;
+                    }
                     
-                    // Update bar chart with dynamic device data
-                    barChart.data.datasets[0].data = appliances.map(a => usageData[a.name].switches);
-                    barChart.update();
-                    
-                    // Update heatmap
-                    updateHeatmap();
-                    
-                    // Update comparison stats
-                    updateComparisonStats();
+                    // Use requestAnimationFrame for smooth updates
+                    requestAnimationFrame(() => {
+                        // Update pie chart with dynamic device data
+                        pieChart.data.datasets[0].data = appliances.map(a => usageData[a.name].onTime);
+                        pieChart.update('none'); // 'none' mode = no animation for better performance
+                        
+                        // Update bar chart with dynamic device data
+                        barChart.data.datasets[0].data = appliances.map(a => usageData[a.name].switches);
+                        barChart.update('none');
+                        
+                        // Update heatmap
+                        updateHeatmap();
+                        
+                        // Update comparison stats
+                        updateComparisonStats();
+                    });
                 }
                 
                 function initializeHeatmap() {

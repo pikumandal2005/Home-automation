@@ -1,0 +1,94 @@
+# ===========================
+# Android / Gradle
+# ===========================
+*.iml
+.gradle
+/local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+bin/
+gen/
+out/
+
+# ===========================
+# Android Studio
+# ===========================
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/gradle.xml
+.idea/assetWizardSettings.xml
+.idea/dictionaries
+.idea/libraries
+.idea/caches
+.idea/modules.xml
+.idea/navEditor.xml
+.idea/misc.xml
+
+# ===========================
+# Gradle files
+# ===========================
+build/
+!gradle-wrapper.jar
+!gradle-wrapper.properties
+
+# ===========================
+# Credentials & Secrets
+# ===========================
+credentials.json
+config.json
+secrets.h
+secrets.json
+firebase-config.js
+.env
+.env.local
+
+# ===========================
+# Keystore files
+# ===========================
+*.jks
+*.keystore
+
+# ===========================
+# Arduino
+# ===========================
+*.hex
+*.elf
+*.o
+*.a
+
+# ===========================
+# OS Files
+# ===========================
+.DS_Store
+Thumbs.db
+*~
+
+# ===========================
+# Temporary files
+# ===========================
+*.tmp
+*.bak
+*.cache
+*.log
+
+# ===========================
+# Firebase
+# ===========================
+.firebase/
+firebase-debug.log
+
+# ===========================
+# Keep these files
+# ===========================
+!.gitignore
+!README.md
+!LICENSE

@@ -15,6 +15,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Chart.js Date Adapter for time-based charts -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     
     <!-- Firebase SDK v9+ (Modular) -->
     <script type="module">
@@ -1341,13 +1343,18 @@
             <div class="card p-6">
                 <div class="flex flex-wrap justify-between items-center mb-4">
                     <h2 class="text-xl font-bold">📊 Sensor History</h2>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <button class="time-range-btn px-4 py-2 rounded-lg bg-indigo-600 text-white" data-range="1" onclick="changeSensorTimeRange(1)">1H</button>
                         <button class="time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="6" onclick="changeSensorTimeRange(6)">6H</button>
                         <button class="time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="24" onclick="changeSensorTimeRange(24)">24H</button>
                         <button class="time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="168" onclick="changeSensorTimeRange(168)">7D</button>
                         <button class="time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="8760" onclick="changeSensorTimeRange(8760)">365D</button>
                         <button class="time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="-1" onclick="changeSensorTimeRange(-1)">ALL</button>
+                        <button class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700" onclick="exportSensorData()">📥 Export to Excel</button>
+                        <button class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 flex items-center gap-1 transition shadow-md" onclick="exportSensorAnalyticsToPDF()" title="Export Sensor Report to PDF">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            PDF
+                        </button>
                     </div>
                 </div>
                 
@@ -1371,7 +1378,7 @@
             <div class="card p-6">
                 <div class="flex flex-wrap justify-between items-center mb-4">
                     <h2 class="text-xl font-bold">⚡ Power Monitor Analytics (PZEM-004T)</h2>
-                    <div class="flex flex-wrap gap-2">
+                    <div class="flex flex-wrap items-center gap-2">
                         <button class="pzem-time-range-btn px-4 py-2 rounded-lg bg-indigo-600 text-white" data-range="1" onclick="changePZEMTimeRange(1)">1H</button>
                         <button class="pzem-time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="6" onclick="changePZEMTimeRange(6)">6H</button>
                         <button class="pzem-time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="24" onclick="changePZEMTimeRange(24)">24H</button>
@@ -1379,6 +1386,11 @@
                         <button class="pzem-time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="720" onclick="changePZEMTimeRange(720)">30D</button>
                         <button class="pzem-time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="8760" onclick="changePZEMTimeRange(8760)">365D</button>
                         <button class="pzem-time-range-btn px-4 py-2 rounded-lg bg-gray-200" data-range="-1" onclick="changePZEMTimeRange(-1)">ALL</button>
+                        <button class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700" onclick="exportPZEMData()">📥 Export to Excel</button>
+                        <button class="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 flex items-center gap-1 transition shadow-md" onclick="exportPZEMAnalyticsToPDF()" title="Export Power Report to PDF">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            PDF
+                        </button>
                     </div>
                 </div>
                 
@@ -7738,7 +7750,696 @@ function changePZEMTimeRange(hours) {
     }
 }
 
+// ========== EXCEL EXPORT FUNCTIONS ==========
+
+// Export sensor data to Excel
+async function exportSensorData() {
+    if (!realtimeDb) {
+        showNotification('❌ Database not initialized', 'error');
+        return;
+    }
+
+    try {
+        showNotification('📊 Preparing sensor data export...', 'info');
+        
+        const { dbRef, get } = window.firebaseModules;
+        const historyRef = dbRef(realtimeDb, 'sensors/history');
+        const snapshot = await get(historyRef);
+
+        if (!snapshot.exists()) {
+            showNotification('❌ No sensor data found', 'error');
+            return;
+        }
+
+        const data = snapshot.val();
+        const dataArray = Object.values(data);
+        
+        // Validate and filter data based on current time range
+        const MIN_VALID_TIMESTAMP = new Date('2020-01-01').getTime();
+        const now = Date.now();
+        
+        const validatedData = dataArray
+            .map(d => {
+                if (!d.timestamp) return null;
+                let ts = d.timestamp;
+                if (ts < 10000000000) ts *= 1000;
+                if (ts < MIN_VALID_TIMESTAMP || ts > now + 86400000) return null;
+                return { ...d, timestamp: ts };
+            })
+            .filter(d => d !== null);
+
+        // Apply time range filter
+        let filteredData;
+        if (currentSensorTimeRange === -1) {
+            filteredData = validatedData;
+        } else {
+            const startTime = now - (currentSensorTimeRange * 60 * 60 * 1000);
+            filteredData = validatedData.filter(d => d.timestamp >= startTime && d.timestamp <= now);
+        }
+
+        if (filteredData.length === 0) {
+            showNotification('❌ No data in selected time range', 'error');
+            return;
+        }
+
+        // Sort by timestamp
+        filteredData.sort((a, b) => a.timestamp - b.timestamp);
+
+        // Prepare data for Excel
+        const excelData = filteredData.map(d => ({
+            'Timestamp': new Date(d.timestamp).toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            }),
+            'Temperature (°C)': parseFloat(d.temperature || 0).toFixed(2),
+            'Humidity (%)': parseFloat(d.humidity || 0).toFixed(2),
+            'Gas Level': parseFloat(d.gas || 0).toFixed(0),
+            'Status': d.status || 'Normal'
+        }));
+
+        // Create workbook
+        const ws = XLSX.utils.json_to_sheet(excelData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Sensor Data');
+
+        // Auto-size columns
+        const maxWidth = excelData.reduce((w, r) => Math.max(w, r['Timestamp'].length), 10);
+        ws['!cols'] = [
+            { wch: maxWidth + 2 },
+            { wch: 15 },
+            { wch: 15 },
+            { wch: 12 },
+            { wch: 12 }
+        ];
+
+        // Generate filename with timestamp
+        const rangeText = currentSensorTimeRange === -1 ? 'All' : `${currentSensorTimeRange}H`;
+        const filename = `SensorData_${rangeText}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+        // Download file
+        XLSX.writeFile(wb, filename);
+        showNotification(`✅ Exported ${filteredData.length} sensor records`, 'success');
+
+    } catch (error) {
+        console.error('Error exporting sensor data:', error);
+        showNotification('❌ Export failed: ' + error.message, 'error');
+    }
+}
+
+// Export PZEM data to Excel
+async function exportPZEMData() {
+    if (!realtimeDb) {
+        showNotification('❌ Database not initialized', 'error');
+        return;
+    }
+
+    try {
+        showNotification('📊 Preparing PZEM data export...', 'info');
+        
+        const { dbRef, get } = window.firebaseModules;
+        const historyRef = dbRef(realtimeDb, 'pzem/history');
+        const snapshot = await get(historyRef);
+
+        if (!snapshot.exists()) {
+            showNotification('❌ No PZEM data found', 'error');
+            return;
+        }
+
+        const data = snapshot.val();
+        const dataArray = Object.values(data);
+        
+        // Validate and filter data based on current time range
+        const MIN_VALID_TIMESTAMP = new Date('2020-01-01').getTime();
+        const now = Date.now();
+        
+        const validatedData = dataArray
+            .map(d => {
+                if (!d.timestamp) return null;
+                let ts = d.timestamp;
+                if (ts < 10000000000) ts *= 1000;
+                if (ts < MIN_VALID_TIMESTAMP || ts > now + 86400000) return null;
+                return { ...d, timestamp: ts };
+            })
+            .filter(d => d !== null);
+
+        // Apply time range filter
+        let filteredData;
+        if (currentPZEMTimeRange === -1) {
+            filteredData = validatedData;
+        } else {
+            const startTime = now - (currentPZEMTimeRange * 60 * 60 * 1000);
+            filteredData = validatedData.filter(d => d.timestamp >= startTime && d.timestamp <= now);
+        }
+
+        if (filteredData.length === 0) {
+            showNotification('❌ No data in selected time range', 'error');
+            return;
+        }
+
+        // Sort by timestamp
+        filteredData.sort((a, b) => a.timestamp - b.timestamp);
+
+        // Prepare data for Excel
+        const excelData = filteredData.map(d => ({
+            'Timestamp': new Date(d.timestamp).toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            }),
+            'Voltage (V)': parseFloat(d.voltage || 0).toFixed(2),
+            'Current (A)': parseFloat(d.current || 0).toFixed(3),
+            'Power (W)': parseFloat(d.power || 0).toFixed(2),
+            'Energy (kWh)': parseFloat(d.energy || 0).toFixed(3),
+            'Frequency (Hz)': parseFloat(d.frequency || 0).toFixed(2),
+            'Power Factor': parseFloat(d.pf || 0).toFixed(3),
+            'Status': d.status || 'Normal'
+        }));
+
+        // Create workbook
+        const ws = XLSX.utils.json_to_sheet(excelData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'PZEM Data');
+
+        // Auto-size columns
+        const maxWidth = excelData.reduce((w, r) => Math.max(w, r['Timestamp'].length), 10);
+        ws['!cols'] = [
+            { wch: maxWidth + 2 },
+            { wch: 12 },
+            { wch: 12 },
+            { wch: 12 },
+            { wch: 14 },
+            { wch: 14 },
+            { wch: 13 },
+            { wch: 12 }
+        ];
+
+        // Generate filename with timestamp
+        const rangeText = currentPZEMTimeRange === -1 ? 'All' : `${currentPZEMTimeRange}H`;
+        const filename = `PZEMData_${rangeText}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+
+        // Download file
+        XLSX.writeFile(wb, filename);
+        showNotification(`✅ Exported ${filteredData.length} PZEM records`, 'success');
+
+    } catch (error) {
+        console.error('Error exporting PZEM data:', error);
+        showNotification('❌ Export failed: ' + error.message, 'error');
+    }
+}
+
+// ========== END EXCEL EXPORT FUNCTIONS ==========
+
 // ========== END PZEM ANALYTICS FUNCTIONS ==========
+
+// ========== PDF EXPORT FUNCTIONS FOR ANALYTICS ==========
+
+// Get time range label
+function getTimeRangeLabel(hours) {
+    if (hours === -1) return 'All Time';
+    if (hours === 1) return 'Last 1 Hour';
+    if (hours === 6) return 'Last 6 Hours';
+    if (hours === 24) return 'Last 24 Hours';
+    if (hours === 168) return 'Last 7 Days';
+    if (hours === 720) return 'Last 30 Days';
+    if (hours === 8760) return 'Last 365 Days';
+    return `Last ${hours} Hours`;
+}
+
+// Export Sensor Analytics to PDF with charts and data
+async function exportSensorAnalyticsToPDF() {
+    showToast("Generating Sensor Analytics PDF...", "info");
+    
+    try {
+        const date = new Date().toISOString().split('T')[0];
+        const time = new Date().toLocaleTimeString();
+        const timeRangeLabel = getTimeRangeLabel(currentSensorTimeRange);
+        
+        // Capture chart images as base64
+        let tempChartImage = '';
+        let humidityChartImage = '';
+        let gasChartImage = '';
+        
+        if (tempHistoryChart) {
+            tempChartImage = tempHistoryChart.toBase64Image('image/png', 1);
+        }
+        if (humidityHistoryChart) {
+            humidityChartImage = humidityHistoryChart.toBase64Image('image/png', 1);
+        }
+        if (gasHistoryChart) {
+            gasChartImage = gasHistoryChart.toBase64Image('image/png', 1);
+        }
+        
+        // Get statistics from DOM
+        const tempMin = document.getElementById('temp-min')?.textContent || '--°C';
+        const tempMax = document.getElementById('temp-max')?.textContent || '--°C';
+        const tempAvg = document.getElementById('temp-avg')?.textContent || '--°C';
+        const humidMin = document.getElementById('humidity-min')?.textContent || '--%';
+        const humidMax = document.getElementById('humidity-max')?.textContent || '--%';
+        const humidAvg = document.getElementById('humidity-avg')?.textContent || '--%';
+        const motionCount = document.getElementById('motion-count')?.textContent || '0';
+        
+        // Get chart data for table
+        let dataTableRows = '';
+        let dataCount = 0;
+        
+        if (tempHistoryChart && tempHistoryChart.data.labels.length > 0) {
+            const labels = tempHistoryChart.data.labels;
+            const tempData = tempHistoryChart.data.datasets[0].data;
+            const humidData = humidityHistoryChart?.data.datasets[0].data || [];
+            const gasData = gasHistoryChart?.data.datasets[0].data || [];
+            
+            dataCount = labels.length;
+            
+            // Sample data if too many records (max 100 for PDF)
+            const sampleRate = Math.max(1, Math.floor(labels.length / 100));
+            
+            for (let i = 0; i < labels.length; i += sampleRate) {
+                const timestamp = new Date(labels[i]).toLocaleString('en-IN', {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+                dataTableRows += `
+                    <tr style="${i % 2 === 0 ? 'background-color: #f8fafc;' : ''}">
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">${timestamp}</td>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center; color: #dc2626;">${(tempData[i] || 0).toFixed(1)}°C</td>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center; color: #2563eb;">${(humidData[i] || 0).toFixed(1)}%</td>
+                        <td style="padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; text-align: center; color: #059669;">${(gasData[i] || 0).toFixed(1)}%</td>
+                    </tr>
+                `;
+            }
+        }
+        
+        // Create HTML content for PDF
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Smart Home Sensor Analytics Report</title>
+                <style>
+                    @media print {
+                        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                        .page-break { page-break-before: always; }
+                    }
+                    * { box-sizing: border-box; margin: 0; padding: 0; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; background: #ffffff; color: #1f2937; line-height: 1.5; }
+                    .container { max-width: 800px; margin: 0 auto; padding: 40px; }
+                    .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; }
+                    .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+                    .header-meta { display: flex; flex-wrap: wrap; gap: 20px; font-size: 13px; opacity: 0.9; }
+                    .section { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+                    .section-title { font-size: 18px; font-weight: 600; color: #4f46e5; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; display: flex; align-items: center; gap: 8px; }
+                    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+                    .stat-card { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0; }
+                    .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+                    .stat-value { font-size: 24px; font-weight: 700; }
+                    .stat-value.blue { color: #2563eb; }
+                    .stat-value.red { color: #dc2626; }
+                    .stat-value.green { color: #059669; }
+                    .stat-value.purple { color: #7c3aed; }
+                    .chart-container { margin-bottom: 24px; background: #fafafa; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
+                    .chart-title { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 12px; }
+                    .chart-img { width: 100%; max-width: 100%; height: auto; border-radius: 6px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+                    th { background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color: white; padding: 12px; font-size: 12px; font-weight: 600; text-align: left; }
+                    th:first-child { border-radius: 8px 0 0 0; }
+                    th:last-child { border-radius: 0 8px 0 0; }
+                    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 11px; border-top: 1px solid #e5e7eb; margin-top: 30px; }
+                    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+                    .badge-primary { background: rgba(255,255,255,0.2); color: white; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <!-- Header -->
+                    <div class="header">
+                        <h1>📊 Sensor Analytics Report</h1>
+                        <div class="header-meta">
+                            <span>🏠 Smart Home Automation System</span>
+                            <span>📅 ${date}</span>
+                            <span>🕐 ${time}</span>
+                            <span class="badge badge-primary">⏱️ ${timeRangeLabel}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics Summary -->
+                    <div class="section">
+                        <div class="section-title">📈 Statistics Summary</div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-label">🌡️ Min Temperature</div>
+                                <div class="stat-value blue">${tempMin}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">🌡️ Max Temperature</div>
+                                <div class="stat-value red">${tempMax}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">🌡️ Avg Temperature</div>
+                                <div class="stat-value green">${tempAvg}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">💧 Min Humidity</div>
+                                <div class="stat-value blue">${humidMin}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">💧 Max Humidity</div>
+                                <div class="stat-value red">${humidMax}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">💧 Avg Humidity</div>
+                                <div class="stat-value green">${humidAvg}</div>
+                            </div>
+                        </div>
+                        <div style="text-align: center; padding: 16px; background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border-radius: 10px; border: 1px solid #e9d5ff;">
+                            <div class="stat-label">🚶 Motion Detections</div>
+                            <div class="stat-value purple" style="font-size: 32px;">${motionCount}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Temperature Chart -->
+                    <div class="section">
+                        <div class="section-title">🌡️ Temperature History</div>
+                        <div class="chart-container">
+                            ${tempChartImage ? `<img src="${tempChartImage}" class="chart-img" alt="Temperature Chart">` : '<p style="text-align:center; color:#94a3b8;">No chart data available</p>'}
+                        </div>
+                    </div>
+                    
+                    <!-- Humidity Chart -->
+                    <div class="section">
+                        <div class="section-title">💧 Humidity History</div>
+                        <div class="chart-container">
+                            ${humidityChartImage ? `<img src="${humidityChartImage}" class="chart-img" alt="Humidity Chart">` : '<p style="text-align:center; color:#94a3b8;">No chart data available</p>'}
+                        </div>
+                    </div>
+                    
+                    <!-- Gas Level Chart -->
+                    <div class="section">
+                        <div class="section-title">💨 Gas Level History</div>
+                        <div class="chart-container">
+                            ${gasChartImage ? `<img src="${gasChartImage}" class="chart-img" alt="Gas Level Chart">` : '<p style="text-align:center; color:#94a3b8;">No chart data available</p>'}
+                        </div>
+                    </div>
+                    
+                    <!-- Data Table -->
+                    <div class="section page-break">
+                        <div class="section-title">📋 Sensor Data Table (${dataCount} records${dataCount > 100 ? ', sampled' : ''})</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 35%;">Timestamp</th>
+                                    <th style="width: 20%; text-align: center;">Temperature</th>
+                                    <th style="width: 20%; text-align: center;">Humidity</th>
+                                    <th style="width: 25%; text-align: center;">Gas Level</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${dataTableRows || '<tr><td colspan="4" style="text-align:center; padding:20px; color:#94a3b8;">No data available</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div class="footer">
+                        <p>Generated by Smart Home Automation System • InfiniSync v3.0</p>
+                        <p>© ${new Date().getFullYear()} All Rights Reserved</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        // Open print window
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showToast("Please allow popups to download PDF", "error");
+            return;
+        }
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        setTimeout(() => {
+            printWindow.focus();
+            printWindow.print();
+            showToast("PDF export ready - use Print to PDF option", "success");
+        }, 800);
+        
+    } catch (error) {
+        console.error('Error exporting sensor analytics PDF:', error);
+        showToast("Error generating PDF: " + error.message, "error");
+    }
+}
+
+// Export PZEM Analytics to PDF with charts and data
+async function exportPZEMAnalyticsToPDF() {
+    showToast("Generating Power Analytics PDF...", "info");
+    
+    try {
+        const date = new Date().toISOString().split('T')[0];
+        const time = new Date().toLocaleTimeString();
+        const timeRangeLabel = getTimeRangeLabel(currentPZEMTimeRange);
+        
+        // Capture chart images as base64
+        let powerChartImage = '';
+        let voltageChartImage = '';
+        let currentChartImage = '';
+        let energyChartImage = '';
+        
+        if (powerHistoryChart) {
+            powerChartImage = powerHistoryChart.toBase64Image('image/png', 1);
+        }
+        if (voltageHistoryChart) {
+            voltageChartImage = voltageHistoryChart.toBase64Image('image/png', 1);
+        }
+        if (currentHistoryChart) {
+            currentChartImage = currentHistoryChart.toBase64Image('image/png', 1);
+        }
+        if (energyHistoryChart) {
+            energyChartImage = energyHistoryChart.toBase64Image('image/png', 1);
+        }
+        
+        // Get statistics from DOM
+        const peakPower = document.getElementById('pzem-peak-power')?.textContent || '-- W';
+        const peakTime = document.getElementById('pzem-peak-time')?.textContent || '--';
+        const avgPower = document.getElementById('pzem-avg-power')?.textContent || '-- W';
+        const totalEnergy = document.getElementById('pzem-total-energy')?.textContent || '-- kWh';
+        const energyCost = document.getElementById('pzem-energy-cost')?.textContent || '₹ --';
+        const runtime = document.getElementById('pzem-runtime')?.textContent || '-- hrs';
+        
+        // Get chart data for table
+        let dataTableRows = '';
+        let dataCount = 0;
+        
+        if (powerHistoryChart && powerHistoryChart.data.labels.length > 0) {
+            const labels = powerHistoryChart.data.labels;
+            const powerData = powerHistoryChart.data.datasets[0].data;
+            const voltageData = voltageHistoryChart?.data.datasets[0].data || [];
+            const currentData = currentHistoryChart?.data.datasets[0].data || [];
+            const energyData = energyHistoryChart?.data.datasets[0].data || [];
+            
+            dataCount = labels.length;
+            
+            // Sample data if too many records (max 80 for PDF due to more columns)
+            const sampleRate = Math.max(1, Math.floor(labels.length / 80));
+            
+            for (let i = 0; i < labels.length; i += sampleRate) {
+                const timestamp = new Date(labels[i]).toLocaleString('en-IN', {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+                dataTableRows += `
+                    <tr style="${i % 2 === 0 ? 'background-color: #f8fafc;' : ''}">
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px;">${timestamp}</td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px; text-align: center; color: #f59e0b;">${(voltageData[i] || 0).toFixed(1)}V</td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px; text-align: center; color: #3b82f6;">${(currentData[i] || 0).toFixed(3)}A</td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px; text-align: center; color: #10b981; font-weight: 600;">${(powerData[i] || 0).toFixed(2)}W</td>
+                        <td style="padding: 6px 10px; border-bottom: 1px solid #e2e8f0; font-size: 10px; text-align: center; color: #8b5cf6;">${(energyData[i] || 0).toFixed(3)}kWh</td>
+                    </tr>
+                `;
+            }
+        }
+        
+        // Create HTML content for PDF
+        const htmlContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>Smart Home Power Analytics Report</title>
+                <style>
+                    @media print {
+                        body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                        .page-break { page-break-before: always; }
+                    }
+                    * { box-sizing: border-box; margin: 0; padding: 0; }
+                    body { font-family: 'Segoe UI', Arial, sans-serif; background: #ffffff; color: #1f2937; line-height: 1.5; }
+                    .container { max-width: 800px; margin: 0 auto; padding: 40px; }
+                    .header { background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; }
+                    .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+                    .header-meta { display: flex; flex-wrap: wrap; gap: 20px; font-size: 13px; opacity: 0.9; }
+                    .section { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+                    .section-title { font-size: 18px; font-weight: 600; color: #059669; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; display: flex; align-items: center; gap: 8px; }
+                    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+                    .stat-card { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0; }
+                    .stat-card.highlight { background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-color: #a7f3d0; }
+                    .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+                    .stat-value { font-size: 22px; font-weight: 700; }
+                    .stat-sub { font-size: 10px; color: #94a3b8; margin-top: 4px; }
+                    .stat-value.red { color: #dc2626; }
+                    .stat-value.blue { color: #2563eb; }
+                    .stat-value.green { color: #059669; }
+                    .stat-value.purple { color: #7c3aed; }
+                    .stat-value.amber { color: #d97706; }
+                    .chart-container { margin-bottom: 24px; background: #fafafa; padding: 16px; border-radius: 8px; border: 1px solid #e5e7eb; }
+                    .chart-title { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 12px; }
+                    .chart-img { width: 100%; max-width: 100%; height: auto; border-radius: 6px; }
+                    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+                    th { background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 10px 8px; font-size: 11px; font-weight: 600; text-align: center; }
+                    th:first-child { border-radius: 8px 0 0 0; text-align: left; }
+                    th:last-child { border-radius: 0 8px 0 0; }
+                    .footer { text-align: center; padding: 20px; color: #64748b; font-size: 11px; border-top: 1px solid #e5e7eb; margin-top: 30px; }
+                    .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+                    .badge-primary { background: rgba(255,255,255,0.2); color: white; }
+                    .cost-highlight { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 2px solid #fbbf24; border-radius: 12px; padding: 20px; text-align: center; margin-top: 16px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <!-- Header -->
+                    <div class="header">
+                        <h1>⚡ Power Analytics Report</h1>
+                        <div class="header-meta">
+                            <span>🏠 Smart Home Automation System</span>
+                            <span>📅 ${date}</span>
+                            <span>🕐 ${time}</span>
+                            <span class="badge badge-primary">⏱️ ${timeRangeLabel}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Statistics Summary -->
+                    <div class="section">
+                        <div class="section-title">📈 Power Statistics Summary</div>
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-label">🔥 Peak Power</div>
+                                <div class="stat-value red">${peakPower}</div>
+                                <div class="stat-sub">${peakTime}</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">📊 Average Power</div>
+                                <div class="stat-value blue">${avgPower}</div>
+                                <div class="stat-sub">When active</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">⏱️ Total Runtime</div>
+                                <div class="stat-value purple">${runtime}</div>
+                                <div class="stat-sub">Active time</div>
+                            </div>
+                        </div>
+                        <div class="cost-highlight">
+                            <div class="stats-grid" style="margin-bottom: 0;">
+                                <div style="text-align: center;">
+                                    <div class="stat-label">⚡ Total Energy</div>
+                                    <div class="stat-value green" style="font-size: 28px;">${totalEnergy}</div>
+                                </div>
+                                <div style="text-align: center; grid-column: span 2;">
+                                    <div class="stat-label">💰 Estimated Cost</div>
+                                    <div class="stat-value amber" style="font-size: 32px;">${energyCost}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Power Chart -->
+                    <div class="section">
+                        <div class="section-title">⚡ Power Consumption (Watts)</div>
+                        <div class="chart-container">
+                            ${powerChartImage ? `<img src="${powerChartImage}" class="chart-img" alt="Power Chart">` : '<p style="text-align:center; color:#94a3b8;">No chart data available</p>'}
+                        </div>
+                    </div>
+                    
+                    <!-- Voltage & Current Charts (side by side) -->
+                    <div class="section">
+                        <div class="section-title">📉 Voltage & Current History</div>
+                        <div class="charts-row">
+                            <div class="chart-container" style="margin-bottom: 0;">
+                                <div class="chart-title">Voltage (V)</div>
+                                ${voltageChartImage ? `<img src="${voltageChartImage}" class="chart-img" alt="Voltage Chart">` : '<p style="text-align:center; color:#94a3b8;">No data</p>'}
+                            </div>
+                            <div class="chart-container" style="margin-bottom: 0;">
+                                <div class="chart-title">Current (A)</div>
+                                ${currentChartImage ? `<img src="${currentChartImage}" class="chart-img" alt="Current Chart">` : '<p style="text-align:center; color:#94a3b8;">No data</p>'}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Energy Chart -->
+                    <div class="section">
+                        <div class="section-title">🔋 Energy Consumption (kWh)</div>
+                        <div class="chart-container">
+                            ${energyChartImage ? `<img src="${energyChartImage}" class="chart-img" alt="Energy Chart">` : '<p style="text-align:center; color:#94a3b8;">No chart data available</p>'}
+                        </div>
+                    </div>
+                    
+                    <!-- Data Table -->
+                    <div class="section page-break">
+                        <div class="section-title">📋 Power Data Table (${dataCount} records${dataCount > 80 ? ', sampled' : ''})</div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 25%; text-align: left;">Timestamp</th>
+                                    <th style="width: 18%;">Voltage</th>
+                                    <th style="width: 18%;">Current</th>
+                                    <th style="width: 20%;">Power</th>
+                                    <th style="width: 19%;">Energy</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${dataTableRows || '<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">No data available</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div class="footer">
+                        <p>Generated by Smart Home Automation System • PZEM-004T Monitor • InfiniSync v3.0</p>
+                        <p>© ${new Date().getFullYear()} All Rights Reserved</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+        
+        // Open print window
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            showToast("Please allow popups to download PDF", "error");
+            return;
+        }
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+        
+        setTimeout(() => {
+            printWindow.focus();
+            printWindow.print();
+            showToast("PDF export ready - use Print to PDF option", "success");
+        }, 800);
+        
+    } catch (error) {
+        console.error('Error exporting PZEM analytics PDF:', error);
+        showToast("Error generating PDF: " + error.message, "error");
+    }
+}
+
+// ========== END PDF EXPORT FUNCTIONS ==========
 
 // ========== END SENSOR FUNCTIONS ==========
 
@@ -7749,50 +8450,196 @@ function exportLogsToPDF() {
         return;
     }
     
+    showToast("Generating Activity Logs PDF...", "info");
+    
     const date = new Date().toISOString().split('T')[0];
     const time = new Date().toLocaleTimeString();
     
-    // Create HTML content for PDF
-    let htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Smart Home Activity Logs</title>
-            <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                h1 { color: #4F46E5; border-bottom: 2px solid #4F46E5; padding-bottom: 10px; }
-                .meta { color: #666; font-size: 12px; margin-bottom: 20px; }
-                .log-entry { padding: 8px; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
-                .log-entry:nth-child(even) { background-color: #f9fafb; }
-                .time { color: #0891b2; font-weight: bold; }
-                .user { color: #2563eb; font-weight: bold; }
-                .category { color: #7c3aed; font-style: italic; }
-            </style>
-        </head>
-        <body>
-            <h1>Smart Home Activity Logs</h1>
-            <div class="meta">
-                <p><strong>Exported:</strong> ${date} at ${time}</p>
-                <p><strong>Total Entries:</strong> ${logEntries.length}</p>
-            </div>
-            <div class="logs">
-    `;
+    // Calculate statistics
+    const categories = {};
+    const users = {};
+    let todayCount = 0;
+    const today = new Date().toLocaleDateString();
     
     logEntries.forEach(entry => {
-        const userText = entry.user ? `<span class="user">[${entry.user}]</span>` : '';
-        const categoryText = entry.category && entry.category !== 'general' ? `<span class="category">[${entry.category}]</span>` : '';
-        htmlContent += `
-            <div class="log-entry">
-                <span class="time">[${entry.date} ${entry.time}]</span>
-                ${userText}
-                ${categoryText}
-                ${entry.text}
+        // Count categories
+        const cat = entry.category || 'general';
+        categories[cat] = (categories[cat] || 0) + 1;
+        
+        // Count users
+        if (entry.user) {
+            users[entry.user] = (users[entry.user] || 0) + 1;
+        }
+        
+        // Count today's entries
+        if (entry.date === today) {
+            todayCount++;
+        }
+    });
+    
+    // Generate category stats HTML
+    const categoryColors = {
+        'general': '#6b7280',
+        'device': '#3b82f6',
+        'sensor': '#10b981',
+        'alarm': '#ef4444',
+        'system': '#8b5cf6',
+        'user': '#f59e0b',
+        'power': '#06b6d4'
+    };
+    
+    let categoryStatsHtml = '';
+    Object.entries(categories).sort((a, b) => b[1] - a[1]).slice(0, 6).forEach(([cat, count]) => {
+        const color = categoryColors[cat] || '#6b7280';
+        const percent = ((count / logEntries.length) * 100).toFixed(1);
+        categoryStatsHtml += `
+            <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid ${color};">
+                <span style="font-weight: 600; color: ${color}; text-transform: capitalize; min-width: 70px;">${cat}</span>
+                <div style="flex: 1; background: #e2e8f0; border-radius: 4px; height: 8px; overflow: hidden;">
+                    <div style="width: ${percent}%; background: ${color}; height: 100%; border-radius: 4px;"></div>
+                </div>
+                <span style="font-size: 12px; color: #64748b; min-width: 60px; text-align: right;">${count} (${percent}%)</span>
             </div>
         `;
     });
     
-    htmlContent += `
+    // Generate log entries HTML with better styling
+    let logEntriesHtml = '';
+    
+    // Convert hex to rgba for background with opacity
+    const hexToRgba = (hex, alpha) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+    
+    logEntries.forEach((entry, index) => {
+        const cat = entry.category || 'general';
+        const catColor = categoryColors[cat] || '#6b7280';
+        const bgColor = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+        const catBgColor = hexToRgba(catColor, 0.15);
+        
+        logEntriesHtml += `
+            <tr style="background-color: ${bgColor};">
+                <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #64748b; white-space: nowrap;">${entry.date || '--'}</td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #0891b2; font-weight: 600; white-space: nowrap;">${entry.time || '--'}</td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px;">
+                    <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; background: ${catBgColor}; color: ${catColor}; font-weight: 500; text-transform: capitalize; font-size: 10px;">${cat}</span>
+                </td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #2563eb;">${entry.user || 'System'}</td>
+                <td style="padding: 10px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #1f2937;">${entry.text || ''}</td>
+            </tr>
+        `;
+    });
+    });
+    
+    // Create HTML content for PDF with professional styling
+    const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Smart Home Activity Logs Report</title>
+            <style>
+                @media print {
+                    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                    .page-break { page-break-before: always; }
+                }
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                body { font-family: 'Segoe UI', Arial, sans-serif; background: #ffffff; color: #1f2937; line-height: 1.5; }
+                .container { max-width: 800px; margin: 0 auto; padding: 40px; }
+                .header { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; }
+                .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+                .header-meta { display: flex; flex-wrap: wrap; gap: 20px; font-size: 13px; opacity: 0.9; }
+                .section { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+                .section-title { font-size: 18px; font-weight: 600; color: #0891b2; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e5e7eb; display: flex; align-items: center; gap: 8px; }
+                .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+                .stat-card { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding: 16px; border-radius: 10px; text-align: center; border: 1px solid #e2e8f0; }
+                .stat-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+                .stat-value { font-size: 28px; font-weight: 700; }
+                .stat-value.cyan { color: #0891b2; }
+                .stat-value.blue { color: #2563eb; }
+                .stat-value.green { color: #059669; }
+                .stat-value.purple { color: #7c3aed; }
+                .category-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+                table { width: 100%; border-collapse: collapse; }
+                th { background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%); color: white; padding: 12px 10px; font-size: 11px; font-weight: 600; text-align: left; }
+                th:first-child { border-radius: 8px 0 0 0; }
+                th:last-child { border-radius: 0 8px 0 0; }
+                .footer { text-align: center; padding: 20px; color: #64748b; font-size: 11px; border-top: 1px solid #e5e7eb; margin-top: 30px; }
+                .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+                .badge-primary { background: rgba(255,255,255,0.2); color: white; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <!-- Header -->
+                <div class="header">
+                    <h1>📋 Activity Logs Report</h1>
+                    <div class="header-meta">
+                        <span>🏠 Smart Home Automation System</span>
+                        <span>📅 ${date}</span>
+                        <span>🕐 ${time}</span>
+                        <span class="badge badge-primary">📊 ${logEntries.length} Total Entries</span>
+                    </div>
+                </div>
+                
+                <!-- Statistics Summary -->
+                <div class="section">
+                    <div class="section-title">📈 Activity Summary</div>
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">📋 Total Logs</div>
+                            <div class="stat-value cyan">${logEntries.length}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">📅 Today's Activity</div>
+                            <div class="stat-value blue">${todayCount}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">🏷️ Categories</div>
+                            <div class="stat-value green">${Object.keys(categories).length}</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">👥 Active Users</div>
+                            <div class="stat-value purple">${Object.keys(users).length}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Category Breakdown -->
+                <div class="section">
+                    <div class="section-title">🏷️ Activity by Category</div>
+                    <div class="category-grid">
+                        ${categoryStatsHtml || '<p style="text-align: center; color: #94a3b8;">No category data</p>'}
+                    </div>
+                </div>
+                
+                <!-- Activity Logs Table -->
+                <div class="section page-break">
+                    <div class="section-title">📝 Detailed Activity Logs</div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width: 12%;">Date</th>
+                                <th style="width: 10%;">Time</th>
+                                <th style="width: 12%;">Category</th>
+                                <th style="width: 15%;">User</th>
+                                <th style="width: 51%;">Activity</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${logEntriesHtml || '<tr><td colspan="5" style="text-align:center; padding:20px; color:#94a3b8;">No activity logs available</td></tr>'}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Footer -->
+                <div class="footer">
+                    <p>Generated by Smart Home Automation System • InfiniSync v3.0</p>
+                    <p>© ${new Date().getFullYear()} All Rights Reserved</p>
+                </div>
             </div>
         </body>
         </html>
@@ -7800,14 +8647,19 @@ function exportLogsToPDF() {
     
     // Create a new window and print
     const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        showToast("Please allow popups to download PDF", "error");
+        return;
+    }
     printWindow.document.write(htmlContent);
     printWindow.document.close();
     
     // Wait for content to load then print
-    printWindow.onload = function() {
+    setTimeout(() => {
+        printWindow.focus();
         printWindow.print();
-        showToast("PDF export initiated - use Print to PDF", "success");
-    };
+        showToast("PDF export ready - use Print to PDF option", "success");
+    }, 800);
 }
 
 // Page Navigation

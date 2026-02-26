@@ -58,6 +58,9 @@ dependencies {
     // CORE FIX: ConstraintLayout
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
+    // Biometric authentication library
+    implementation("androidx.biometric:biometric:1.1.0")
+
     // Firebase Cloud Messaging for push notifications
     implementation("com.google.firebase:firebase-messaging-ktx:23.4.0")
     

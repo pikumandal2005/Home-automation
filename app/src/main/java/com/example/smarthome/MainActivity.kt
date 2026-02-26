@@ -21,7 +21,11 @@ import android.speech.tts.TextToSpeech
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.biometric.BiometricManager
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat as CoreContextCompat
 import java.util.Locale
+import java.util.concurrent.Executor
 
 class MainActivity : AppCompatActivity() {
 
@@ -42,6 +46,11 @@ class MainActivity : AppCompatActivity() {
     // Native speech recognizer for implementing webkitSpeechRecognition polyfill
     private var speechRecognizer: SpeechRecognizer? = null
     private var isListening = false
+
+    // Biometric authentication
+    private lateinit var executor: Executor
+    private lateinit var biometricPrompt: BiometricPrompt
+    private lateinit var promptInfo: BiometricPrompt.PromptInfo
 
     @Suppress("DEPRECATION")
     @SuppressLint("SetJavaScriptEnabled")
@@ -92,6 +101,9 @@ class MainActivity : AppCompatActivity() {
 
         // Initialize TTS engine to provide speech output for pages that use the Web Speech API
         initTextToSpeech()
+
+        // Initialize Biometric authentication
+        initBiometric()
 
         // Set a WebViewClient to handle page navigation within the WebView and inject polyfills
         myWebView.webViewClient = object : WebViewClient() {
@@ -347,6 +359,43 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // Initialize Biometric authentication
+    private fun initBiometric() {
+        executor = CoreContextCompat.getMainExecutor(this)
+        
+        biometricPrompt = BiometricPrompt(this, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    super.onAuthenticationError(errorCode, errString)
+                    runOnUiThread {
+                        val jsCode = "if (typeof window.__androidBiometricCallback === 'function') window.__androidBiometricCallback({success: false, error: '$errString'});"
+                        myWebView.evaluateJavascript(jsCode, null)
+                    }
+                    Log.e("Biometric", "Authentication error: $errString")
+                }
+
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    runOnUiThread {
+                        val jsCode = "if (typeof window.__androidBiometricCallback === 'function') window.__androidBiometricCallback({success: true});"
+                        myWebView.evaluateJavascript(jsCode, null)
+                    }
+                    Log.d("Biometric", "Authentication succeeded")
+                }
+
+                override fun onAuthenticationFailed() {
+                    super.onAuthenticationFailed()
+                    Log.w("Biometric", "Authentication failed")
+                }
+            })
+
+        promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Biometric Authentication")
+            .setSubtitle("Unlock Smart Home App")
+            .setNegativeButtonText("Use PIN instead")
+            .build()
+    }
+
     // JavaScript interface to expose TTS and STT methods to the page
     @Suppress("unused")
     inner class WebAppInterface {
@@ -401,6 +450,42 @@ class MainActivity : AppCompatActivity() {
          @JavascriptInterface
          fun stopListening() {
              runOnUiThread { stopNativeListening() }
+         }
+         
+         // Biometric authentication
+         @JavascriptInterface
+         fun authenticateBiometric() {
+             runOnUiThread {
+                 val biometricManager = BiometricManager.from(this@MainActivity)
+                 when (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK)) {
+                     BiometricManager.BIOMETRIC_SUCCESS -> {
+                         Log.d("Biometric", "App can authenticate using biometrics")
+                         biometricPrompt.authenticate(promptInfo)
+                     }
+                     BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> {
+                         Log.e("Biometric", "No biometric features available on this device")
+                         val jsCode = "if (typeof window.__androidBiometricCallback === 'function') window.__androidBiometricCallback({success: false, error: 'No biometric hardware'});"
+                         myWebView.evaluateJavascript(jsCode, null)
+                     }
+                     BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> {
+                         Log.e("Biometric", "Biometric features are currently unavailable")
+                         val jsCode = "if (typeof window.__androidBiometricCallback === 'function') window.__androidBiometricCallback({success: false, error: 'Biometric hardware unavailable'});"
+                         myWebView.evaluateJavascript(jsCode, null)
+                     }
+                     BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> {
+                         Log.e("Biometric", "No biometric credentials enrolled")
+                         val jsCode = "if (typeof window.__androidBiometricCallback === 'function') window.__androidBiometricCallback({success: false, error: 'No biometric enrolled'});"
+                         myWebView.evaluateJavascript(jsCode, null)
+                     }
+                 }
+             }
+         }
+         
+         @JavascriptInterface
+         fun isBiometricAvailable(): Boolean {
+             val biometricManager = BiometricManager.from(this@MainActivity)
+             val result = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK)
+             return result == BiometricManager.BIOMETRIC_SUCCESS
          }
          
          // Alarm notification methods - called from JavaScript when alarms trigger
